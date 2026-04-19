@@ -72,7 +72,11 @@
     "clubs:geocode:dry": "tsx scripts/geocode-clubs.ts --dry-run --limit=10",
     "nif:import": "tsx scripts/nif-import.ts",
     "nif:import:dry": "tsx scripts/nif-import.ts --dry-run",
-    "enrich:all": "npm run clubs:enrich:names && npm run clubs:enrich && npm run clubs:geocode"
+    "enrich:all": "npm run clubs:enrich:names && npm run clubs:enrich && npm run clubs:geocode",
+    "emails:find": "tsx scripts/find-emails.ts",
+    "emails:find:dry": "tsx scripts/find-emails.ts --dry-run --limit=20",
+    "emails:find:sport": "tsx scripts/find-emails.ts --type=sport",
+    "emails:find:pt": "tsx scripts/find-emails.ts --type=pt"
   },
   "dependencies": {
     "@react-leaflet/core": "^2.1.0",
