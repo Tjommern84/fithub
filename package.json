@@ -63,7 +63,16 @@
     "websites:find:test": "tsx scripts/find-missing-websites.ts --dry-run --limit=10",
     "find:all": "npm run ernæring:find && npm run clubs:find:klatring && npm run clubs:find:langrenn && npm run groups:find",
     "push:all:dry": "npm run ernæring:push:dry && npm run clubs:push:klatring && npm run clubs:push:langrenn && npm run groups:push:dry",
-    "push:all": "npm run ernæring:push && npm run clubs:push:klatring && npm run clubs:push:langrenn && npm run groups:push"
+    "push:all": "npm run ernæring:push && npm run clubs:push:klatring && npm run clubs:push:langrenn && npm run groups:push",
+    "clubs:enrich": "tsx scripts/enrich-clubs-brreg.ts",
+    "clubs:enrich:dry": "tsx scripts/enrich-clubs-brreg.ts --dry-run --limit=20",
+    "clubs:enrich:names": "tsx scripts/enrich-clubs-names.ts",
+    "clubs:enrich:names:dry": "tsx scripts/enrich-clubs-names.ts --dry-run",
+    "clubs:geocode": "tsx scripts/geocode-clubs.ts",
+    "clubs:geocode:dry": "tsx scripts/geocode-clubs.ts --dry-run --limit=10",
+    "nif:import": "tsx scripts/nif-import.ts",
+    "nif:import:dry": "tsx scripts/nif-import.ts --dry-run",
+    "enrich:all": "npm run clubs:enrich:names && npm run clubs:enrich && npm run clubs:geocode"
   },
   "dependencies": {
     "@react-leaflet/core": "^2.1.0",
