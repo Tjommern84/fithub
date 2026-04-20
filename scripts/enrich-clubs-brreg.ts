@@ -98,7 +98,6 @@ const SPORT_KEYWORDS: Record<string, string> = {
   motorsport: 'motorsport',
   dartsklubb: 'dart',
   sjakk: 'sjakk',
-  volleyball: 'volleyball',
   cricket: 'cricket',
   baseball: 'baseball',
   softball: 'baseball',
