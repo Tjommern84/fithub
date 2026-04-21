@@ -23,7 +23,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const SERPER_API_KEY = process.env.SERPER_API_KEY ?? '';
 
 const COOLDOWN_HOURS = 24;
-const DELAY_MS = 1200; // ms between Serper requests
+const DELAY_MS = 400; // ms between Serper requests (keep total under Vercel 10s limit)
 
 // ── Search queries to run per city ────────────────────────────────────────────
 
@@ -145,10 +145,11 @@ export async function POST(req: NextRequest) {
     { onConflict: 'city' },
   );
 
-  // ── Run searches ───────────────────────────────────────────────────────────
+  // ── Run searches (max 3 to stay within Vercel 10s function limit) ────────
   let added = 0;
+  const specsToRun = SEARCH_SPECS.slice(0, 3);
 
-  for (let i = 0; i < SEARCH_SPECS.length; i++) {
+  for (let i = 0; i < specsToRun.length; i++) {
     const spec = SEARCH_SPECS[i];
     const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
     const fullQuery = `${spec.query} ${cityDisplay}`;
@@ -161,7 +162,7 @@ export async function POST(req: NextRequest) {
       const id = makeId(spec.idPrefix, spec.term, place.address ?? place.title);
       const effectiveCity = extractCity(place.address ?? '') ?? city;
 
-      const serviceRow = {
+      const serviceRow: Record<string, unknown> = {
         id,
         name: place.title,
         type: spec.type,
@@ -195,16 +196,18 @@ export async function POST(req: NextRequest) {
             .eq('id', id);
         }
 
-        // Upsert coverage
-        await supabase
-          .from('service_coverage')
-          .upsert({ service_id: id, type: 'city', city: effectiveCity }, { onConflict: 'service_id,type,city', ignoreDuplicates: true });
+        // Insert coverage (best-effort, ignore duplicates)
+        try {
+          await supabase
+            .from('service_coverage')
+            .insert({ service_id: id, type: 'city', city: effectiveCity });
+        } catch { /* ignore duplicate */ }
 
         added++;
       }
     }
 
-    if (i < SEARCH_SPECS.length - 1) await sleep(DELAY_MS);
+    if (i < specsToRun.length - 1) await sleep(DELAY_MS);
   }
 
   return NextResponse.json({ status: 'refreshed', city, added });
