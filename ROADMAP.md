@@ -1,248 +1,176 @@
 # Utviklingsplan for settdegetmal.no
 
-## Faser
+*Sist oppdatert: april 2026*
 
-### Fase 1: Grunnleggende stabilitet (Ferdig)
+---
+
+## Fase 1: Grunnleggende stabilitet
 **Status**: ✅ Fullført
 
 - [x] Kjernefunksjonalitet (matching, søk, profiler)
-- [x] Database-skjema med PostGIS
+- [x] Database-skjema med PostGIS og geografisk søk
 - [x] Autentisering via Supabase
 - [x] Grunnleggende UI med Tailwind CSS
 - [x] Stripe-integrasjon (B2C og B2B)
 - [x] E-postutsending via Resend
 
-**Nylig fikset:**
-- [x] ResultsView.tsx syntax error
-- [x] "use server" export problem i recommendations.ts
-- [x] Manglende emailTemplates exports for booking
-- [x] .env.example og README.md dokumentasjon
+---
+
+## Fase 2: Data og innholdspopulering
+**Status**: ✅ Fullført
+
+### Datasett bygd opp (nullkostnad)
+- [x] ~12 000 virksomheter importert fra BRREG (SQLite → Supabase)
+- [x] 149 treningssenter med koordinater (Google Places via Serper.dev)
+- [x] 807 idrettslag med by-dekning og sport-tags
+- [x] 840 personlige trenere med by-dekning
+- [x] Ernæringsrådgivere og rehabiliteringstilbud
+- [x] Gruppetimer: yoga, bootcamp, løpegrupper, utendørs
+
+### Enrichment-pipeline (nullkostnad)
+- [x] Navn-basert sport-inferens (`enrich-clubs-names.ts`) → 778 klubber oppdatert
+- [x] BRREG formålsbeskrivelse-parsing (`enrich-clubs-brreg.ts`) → 264 klubber oppdatert
+- [x] Nominatim-geocoding (`geocode-clubs.ts`) → 999/1000 koordinatsatt
+- [x] E-postfunn via BRREG + hjemmeside-scraping (`find-emails.ts`) → 728 epost funnet
+- [x] NIF-importskript klart (venter på credentials fra idrettsforbundet.no)
+
+### Kategorisystem
+- [x] 4 hovedkategorier: `trene-selv`, `trene-sammen`, `oppfolging`, `aktivitet-sport`
+- [x] `main_category`-kolonne i databasen, populert fra `type`-feltet
+- [x] Tag-basert filtrering innenfor kategorier
+- [x] `search_services()` SQL-funksjon (14 parametre, PostGIS, score-ranking)
 
 ---
 
-## Fase 2: Kvalitetssikring og testing (Pågår)
-**Estimert tid**: 2-3 uker
+## Fase 3: Frontend og deployment
+**Status**: ✅ Fullført
+
+### Hjemmeside og søk
+- [x] 4-område CategoryGrid med bilde-animasjon og tag-panel
+- [x] GPS-lokasjon og adressesøk (Nominatim-autocomplete)
+- [x] Oslo bydel-filter
+- [x] Interaktivt kart på resultatsiden (react-leaflet v4)
+- [x] Nationwide + lokal resultat-splitt
+- [x] Sortering (beste treff, nærmest, rating, pris)
+
+### Vercel-deployment
+- [x] Tilkoblet GitHub (auto-deploy ved push til `main`)
+- [x] Domeneoppsett: `xn--settdegetm-s8a.com` (punycode for settdegetmål.com)
+- [x] Vercel DNS aktivert for `.com`-domenet
+- [ ] DNS for `settdegetmål.no` — venter på Uniweb NS-bytte
+
+### Infrastruktur-fikser (april 2026)
+- [x] `scripts/` ekskludert fra `tsconfig.json` (byggebrytende TypeScript-feil i skript kan ikke lenger bryte Vercel-bygget)
+- [x] `refresh-city` API: begrenset til 3 søk per kall (holder seg under Vercel Hobby 10s timeout)
+- [x] `react-leaflet` nedgradert til v4 (kompatibel med React 18)
+
+---
+
+## Fase 4: Synlighet og datakvalitet (Neste)
 **Prioritet**: Høy
 
-### Testing
-- [ ] Sette opp Jest og React Testing Library
-- [ ] Unit tests for matching-algoritme
-- [ ] Unit tests for geografisk søk
-- [ ] Integration tests for API-ruter
-- [ ] E2E tests med Playwright/Cypress for kritiske flyter:
-  - [ ] Matching-flyt (fra start til resultat)
-  - [ ] Lead-opprettelse
-  - [ ] Booking-flyt
-  - [ ] Tilbyder-registrering
+### SEO — lav hengetid, høy effekt
+- [ ] `sitemap.xml` generert automatisk
+- [ ] `robots.txt` med korrekte regler
+- [ ] Open Graph-metadata på alle sider (bilde, tittel, beskrivelse)
+- [ ] Strukturert data (Schema.org `LocalBusiness`, `SportsClub`)
+- [ ] Statiske landingssider per by og kategori (f.eks. `/styrke/oslo`, `/fotball/bergen`)
+- [ ] Kanoniske URL-er
 
-### Feilhåndtering og logging
-- [ ] Forbedre error boundaries i React-komponenter
-- [ ] Strukturert logging med ulike nivåer (debug, info, warn, error)
-- [ ] Sentry-integrasjon for produksjonsovervåkning
-- [ ] Better error messages for brukere
+### Datakvalitet
+- [ ] Dublett-deteksjon og sammenslåing på tvers av datakilder
+- [ ] Manuell verifikasjon av toppresultater (100 per kategori)
+- [ ] Hjemmeside-validering (er URL-ene fortsatt aktive?)
+- [ ] NIF-import når API-credentials er på plass
+- [ ] `refresh-city` utvidelse til gymkjeder og yoga-studioer
 
-### Performance
-- [ ] Implementere React Server Components der mulig
-- [ ] Optimalisere bildestørrelser og lazy loading
-- [ ] Database query optimization (indexer er allerede på plass)
-- [ ] Implementere caching-strategi for statisk innhold
-- [ ] Lighthouse score > 90 på alle sider
+### DNS og domene
+- [ ] Bekreft at `settdegetmål.com` er live og tilgjengelig uten feil
+- [ ] Konfigurer `settdegetmål.no` via Vercel DNS (krever NS-bytte hos Uniweb)
 
 ---
 
-## Fase 3: Brukeropplevelse og konvertering (2-4 uker)
+## Fase 5: Brukeropplevelse og konvertering
 **Prioritet**: Høy
 
-### UX-forbedringer
-- [ ] A/B testing rammeverk for å teste ulike versjoner
-- [ ] Forbedre onboarding for nye tilbydere
-- [ ] Hjelpetekster og tooltips i matching-flyten
-- [ ] Progressiv visning av resultater (infinite scroll)
-- [ ] Bedre mobilopplevelse med native-lignende interaksjoner
+### UX
+- [ ] Progressiv visning av resultater (pagination eller infinite scroll)
+- [ ] Bedre mobilopplevelse (kart-layout, touch-vennlige kort)
+- [ ] "Ingen treff"-tilstand med smarte forslag (prøv bredere radius, annen kategori)
+- [ ] Lagre søk og lokasjon mellom besøk (allerede delvis implementert)
+- [ ] Kortvisning med bilde der tilbydere har lastet opp profil
 
-### Søk og filtrering
-- [ ] Avansert søk med flere filtre samtidig
-- [ ] Lagre søk for innloggede brukere
-- [ ] Søkehistorikk
-- [ ] "Favoritter" for tjenester
-- [ ] Sammenligne tjenester side-ved-side
-
-### Anbefalinger
-- [ ] Forbedre anbefalt-algoritme med maskinlæring
-- [ ] "Andre brukere likte også"-funksjonalitet
-- [ ] Personaliserte e-post-anbefalinger (ukentlig/månedlig)
-- [ ] Push-notifikasjoner for nye tilbud i området
+### Tilbyder-onboarding
+- [ ] Forenklet registreringsflyt for tilbydere
+- [ ] "Krev denne profilen"-funksjon for eksisterende BRREG-oppføringer
+- [ ] Profil-editor med forhåndsvisning
+- [ ] Veiledning: slik øker du synligheten din
 
 ---
 
-## Fase 4: Innholdsutvidelse (3-5 uker)
-**Prioritet**: Middels-høy
-
-### Vurderinger og reviews
-- [ ] Komplett vurderingssystem for tjenester
-- [ ] Verifiserte vurderinger (kun fra ekte bookinger)
-- [ ] Bildeopplasting i vurderinger
-- [ ] Moderering av vurderinger (admin-panel)
-- [ ] Svar fra tilbydere på vurderinger
-
-### Innholdstyper
-- [ ] Blogg/artikler om trening og helse
-- [ ] Treningsvideoer og guider
-- [ ] Ekspertråd fra tilbydere
-- [ ] Suksesshistorier fra brukere
-- [ ] SEO-optimaliserte landingssider per by/kategori
-
-### Tilbyder-funksjoner
-- [ ] Kalenderintegrasjon (Google Calendar, Outlook)
-- [ ] Automatisk booking-bekreftelse
-- [ ] Klasse/gruppetime-administrasjon
-- [ ] Medlemshåndtering for sentere
-- [ ] Fakturamodul
-
----
-
-## Fase 5: Skalering og datakvalitet (4-6 uker)
+## Fase 6: Innhold og engasjement
 **Prioritet**: Middels
 
-### Database-utvidelse
-- [ ] Automatisk import fra Brønnøysundregisteret
-  - [ ] API-integrasjon med Enhetsregisteret
-  - [ ] Filtrering på NACE-koder (helse/fitness-relatert)
-  - [ ] Automatisk kategorisering av virksomheter
-  - [ ] Oppdatering av kontaktinformasjon
-- [ ] Datavalidering og cleaning-pipeline
-- [ ] Dublett-deteksjon og fusjonering
-- [ ] Manuell verifikasjon av nye oppføringer
+### Vurderinger
+- [ ] Vurderingssystem (1–5 stjerner + fritekst)
+- [ ] Verifiserte vurderinger (kun fra gjennomførte bookinger)
+- [ ] Moderering og svar fra tilbydere
 
-### Analytics og innsikt
-- [ ] Detaljert analytics dashboard for tilbydere
-- [ ] Konverteringsstatistikk (visninger → leads → bookinger)
-- [ ] Markedsinnsikt (populære kategorier, priser, etc.)
-- [ ] Eksport av data til CSV/Excel
-- [ ] Google Analytics 4-integrasjon
-
-### SEO og synlighet
-- [ ] Strukturert data (Schema.org markup)
-- [ ] Sitemap-generering
-- [ ] Open Graph-metadata for alle sider
-- [ ] Canonical URLs
-- [ ] robots.txt optimalisering
-- [ ] Lokal SEO for byer
-
----
-
-## Fase 6: Markedsplassfunksjoner (5-8 uker)
-**Prioritet**: Lav-middels
-
-### Betalinger og transaksjoner
-- [ ] Direkte betaling via plattformen (ikke bare leads)
-- [ ] Stripe Connect for tilbydere
-- [ ] Refusjonshåndtering
-- [ ] Månedlige abonnementer
-- [ ] Gavekort-funksjonalitet
+### Innhold
+- [ ] Blogg / treningssartikler for SEO og engasjement
+- [ ] Ekspertråd fra tilknyttede tilbydere
+- [ ] Suksesshistorier fra brukere
 
 ### Kommunikasjon
-- [ ] In-app chat mellom brukere og tilbydere
-- [ ] Videochat-integrasjon for online-trenere
-- [ ] E-post-notifikasjoner med templates
-- [ ] SMS-notifikasjoner (via Twilio)
-- [ ] Kalenderinvitasjoner (.ics-filer)
-
-### Partnerskap
-- [ ] Partner API for bedrifter (velferdstilbud)
-- [ ] Hvitemerking for bedriftskunder
-- [ ] Bulk-booking for organisasjoner
-- [ ] Rapportering for HR-avdelinger
+- [ ] E-post-notifikasjoner med personaliserte treningstips
+- [ ] Kalenderinvitasjoner (.ics) for bookinger
 
 ---
 
-## Fase 7: AI og automatisering (Kontinuerlig)
-**Prioritet**: Lav-middels
+## Fase 7: Markedsplass og betalinger
+**Prioritet**: Middels
 
-### AI-funksjoner
-- [ ] AI-drevet matching (trene modell på historiske data)
-- [ ] Chatbot for kundesupport
-- [ ] Automatisk kategorisering av tilbydere
-- [ ] Bildegenkjenning for profiler/fasiliteter
-- [ ] Prediktiv analytics (churn, konvertering)
-
-### Automatisering
-- [ ] Automatisk påminnelser før avtaler
-- [ ] Automatisk oppfølging av leads
-- [ ] Automatisk prissetting basert på marked
-- [ ] Automatisk kvalitetskontroll av profiler
+- [ ] Direkte betaling via plattformen (Stripe Connect for tilbydere)
+- [ ] Abonnementsmodell for premium-tilbydere
+- [ ] Partner API for bedrifter (velferdstilbud / treningsstøtte)
+- [ ] Rapportering og analytics for tilbydere
 
 ---
 
 ## Kontinuerlige forbedringer
 
-### Sikkerhet
-- [ ] Penetrasjonstesting
-- [ ] GDPR-compliance audit
-- [ ] Sikker datasletting (anonymisering)
+### Sikkerhet og compliance
+- [ ] GDPR-compliance audit og sikker datasletting
 - [ ] 2FA for tilbydere og admin
-- [ ] Rate limiting på alle API-endepunkter
+- [ ] Rate limiting på API-endepunkter
 
 ### Infrastruktur
-- [ ] CI/CD pipeline med automatisk testing
-- [ ] Staging environment
-- [ ] Database-backup rutiner
-- [ ] Disaster recovery plan
-- [ ] Horisontalt skalering (flere servere)
-
-### Dokumentasjon
-- [ ] API-dokumentasjon (OpenAPI/Swagger)
-- [ ] Utviklerdokumentasjon
-- [ ] Brukermanual for tilbydere
-- [ ] Admin-guide
+- [ ] Staging-miljø (preview-deploys i Vercel fungerer delvis)
+- [ ] Database-backup-rutiner (Supabase har automatisk backup på Pro)
+- [ ] Overvåkning og varsling (Sentry eller tilsvarende)
 
 ---
 
-## Metrikksporing
+## Nøkkeltall å følge
 
-### Nøkkeltall å måle:
-- **Brukermetrikker**:
-  - Antall søk per uke
-  - Konverteringsrate (søk → lead)
-  - Gjennomsnittlig tid i matching-flyt
-  - Bounce rate på resultatsiden
-
-- **Tilbydermetrikker**:
-  - Antall aktive tilbydere
-  - Gjennomsnittlig responstid på leads
-  - Profil-fullstendighet
-  - Antall bookinger per tilbyder
-
-- **Tekniske metrikker**:
-  - Response time for API-kall
-  - Database query performance
-  - Error rate
-  - Uptime (mål: 99.9%)
+| Metrikk | Mål |
+|---|---|
+| Søk per uke | Voksende |
+| Søk → klikk på tilbyder | > 20 % |
+| Tjenester i databasen | > 15 000 |
+| Byer med lokal dekning | > 30 |
+| Vercel-byggestatus | Alltid grønn |
+| Uptime | > 99,5 % |
 
 ---
 
-## Risikoer og utfordringer
+## Risikoer
 
-1. **Datakvalitet**: Mange tilbydere har ikke oppdatert informasjon i offentlige registre
-   - *Løsning*: Manuell verifikasjon, insentiver for tilbydere å oppdatere selv
-
-2. **Konkurranse**: Eksisterende aktører som Holdbar, Treningsappen, etc.
-   - *Løsning*: Fokus på matching-kvalitet og lokal tilstedeværelse
-
-3. **Cold start problem**: Få tilbydere = få brukere = få tilbydere
-   - *Løsning*: Starte med ett geografisk område (f.eks. Oslo), bygge opp organisk
-
-4. **Skalering**: PostgreSQL med PostGIS kan bli treg ved mange millioner rader
-   - *Løsning*: Optimalisering av indekser, eventuelt Elasticsearch for søk
-
-5. **Betalingsvilje**: Vil tilbydere betale for plattformen?
-   - *Løsning*: Freemium-modell, betaling kun ved leads/bookinger
-
----
-
-## Estimert total utviklingstid
-- **Fase 2-3**: 4-7 uker
-- **Fase 4-5**: 7-11 uker
-- **Fase 6-7**: 5-8 uker (lavere prioritet)
-
-**Total**: 16-26 uker for full funksjonalitet (avhengig av teamstørrelse og prioriteringer)
+| Risiko | Tiltak |
+|---|---|
+| Datakvalitet fra BRREG er variabel | Enrichment-pipeline + manuell spot-check |
+| Cold start — lite innhold i små byer | `refresh-city` fyller dynamisk ved besøk |
+| Scripts bryter Vercel-bygg | Løst: `scripts/` ekskludert fra tsconfig |
+| Vercel Hobby timeout (10s) | Løst: `refresh-city` begrenset til 3 søk |
+| DNS-propagering for `.no`-domenet | Venter på Uniweb NS-bytte |
+| NIF API krever godkjenning | Skript klart — søk sendt |
