@@ -20,7 +20,7 @@ export async function geocodeNorwegianCity(city: string): Promise<Coords | null>
       `&format=json&limit=1&countrycodes=no`;
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'settdegetmal.no/1.0' },
+      headers: { 'User-Agent': 'fithub.no/1.0' },
       next: { revalidate: 86400 }, // cache 24h in Next.js
     });
 

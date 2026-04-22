@@ -2,7 +2,7 @@
 
 ## Oversikt
 
-Denne guiden brukes for å verifisere at Row Level Security (RLS) er korrekt konfigurert for alle sensitive tabeller i settdegetmal.no.
+Denne guiden brukes for å verifisere at Row Level Security (RLS) er korrekt konfigurert for alle sensitive tabeller i fithub.no.
 
 ## Tabeller som krever RLS
 

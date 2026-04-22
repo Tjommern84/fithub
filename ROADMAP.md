@@ -1,4 +1,4 @@
-# Utviklingsplan for settdegetmal.no
+# Utviklingsplan for fithub.no
 
 *Sist oppdatert: april 2026*
 
@@ -56,7 +56,7 @@
 ### Vercel-deployment
 - [x] Tilkoblet GitHub (auto-deploy ved push til `main`)
 - [x] **`fithub.no`** — live og fungerende (DNS via Webhuset, A-record → Vercel)
-- [x] `settdegetmål.com` konfigurert som alias i Vercel
+- [x] `fithub.no` konfigurert som primærdomene i Vercel
 - [x] Vercel CLI koblet til (`npx vercel` fungerer fra prosjektmappen)
 
 ### Infrastruktur-fikser (april 2026)
@@ -85,8 +85,7 @@
 - [ ] `refresh-city` utvidelse til gymkjeder og yoga-studioer
 
 ### DNS og domene
-- [ ] Bekreft at `settdegetmål.com` er live og tilgjengelig uten feil
-- [ ] Konfigurer `settdegetmål.no` via Vercel DNS (krever NS-bytte hos Uniweb)
+- [x] `fithub.no` er live og tilgjengelig (DNS via Webhuset → Vercel)
 
 ---
 

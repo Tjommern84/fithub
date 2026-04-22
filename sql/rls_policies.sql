@@ -1,4 +1,4 @@
--- RLS Policies for settdegetmal.no
+-- RLS Policies for fithub.no
 -- Run this in Supabase SQL Editor to enable row-level security
 --
 -- IMPORTANT: Run in order - tables must exist before policies

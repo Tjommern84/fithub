@@ -1,5 +1,5 @@
 -- ============================================
--- SettDegEtMål – Complete Database Schema
+-- FitHub – Complete Database Schema
 -- Run this FIRST in Supabase SQL Editor
 -- ============================================
 

@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { container } from '../../lib/ui';
 
 export const metadata: Metadata = {
-  title: 'Vilkår - settdegetmal.no',
-  description: 'Vilkår for bruk av settdegetmal.no.',
+  title: 'Vilkår - fithub.no',
+  description: 'Vilkår for bruk av fithub.no.',
 };
 
 export default function VilkarPage() {
@@ -12,14 +12,14 @@ export default function VilkarPage() {
     <main className={`${container} py-16`}>
       <h1 className="text-3xl font-semibold text-slate-900">Vilkår</h1>
       <p className="mt-4 text-sm text-slate-600">
-        Ved å bruke settdegetmal.no godtar du vilkårene nedenfor. Dette er en kort
+        Ved å bruke fithub.no godtar du vilkårene nedenfor. Dette er en kort
         MVP-versjon.
       </p>
 
       <section className="mt-8 space-y-3 text-sm text-slate-700">
         <h2 className="text-lg font-semibold text-slate-900">Tjenesten</h2>
         <p>
-          settdegetmal.no er en matchingtjeneste mellom kunder og treningstilbydere.
+          fithub.no er en matchingtjeneste mellom kunder og treningstilbydere.
           Vi formidler forespørsler og samler inn grunnleggende informasjon for å gi
           riktige forslag.
         </p>
@@ -37,7 +37,7 @@ export default function VilkarPage() {
         <h2 className="text-lg font-semibold text-slate-900">Tilbyderansvar</h2>
         <p>
           Tilbydere er ansvarlige for egen levering, svar og avtalevilkår med kunden.
-          settdegetmal.no er ikke part i avtalen mellom kunde og tilbyder.
+          fithub.no er ikke part i avtalen mellom kunde og tilbyder.
         </p>
       </section>
 
@@ -53,7 +53,7 @@ export default function VilkarPage() {
         <h2 className="text-lg font-semibold text-slate-900">Kontakt</h2>
         <p>
           Spørsmål kan sendes til{' '}
-          <span className="font-semibold">post@settdegetmal.no</span>.
+          <span className="font-semibold">post@fithub.no</span>.
         </p>
       </section>
 

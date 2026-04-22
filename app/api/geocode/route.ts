@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       )}`,
       {
         headers: {
-          'User-Agent': 'settdegetmal/1.0 (settdegetmal.no)',
+          'User-Agent': 'fithub/1.0 (fithub.no)',
         },
       }
     );

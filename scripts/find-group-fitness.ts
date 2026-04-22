@@ -142,7 +142,7 @@ async function searchPlaces(query: string): Promise<SerperPlace[]> {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🏃  SettDegEtMål – finn gruppetimer, yoga, outdoor, bootcamp, løpegrupper');
+  console.log('🏃  FitHub – finn gruppetimer, yoga, outdoor, bootcamp, løpegrupper');
   console.log();
 
   if (!SERPER_API_KEY) {

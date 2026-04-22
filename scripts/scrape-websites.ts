@@ -51,7 +51,7 @@ const entries = readFileSync(inPath, 'utf-8')
 
 const todo = limitArg ? entries.slice(0, limitArg) : entries;
 
-console.log('🌐 SettDegEtMål – nettside-scraper');
+console.log('🌐 FitHub – nettside-scraper');
 console.log(`   Nettsider : ${todo.length.toLocaleString('nb-NO')}`);
 console.log(`   Concurrent: ${concurrency}  |  Delay: ${delayMs} ms  |  Timeout: ${TIMEOUT_MS} ms`);
 if (resume) console.log('   Resume    : ja (hopper over eksisterende filer)');
@@ -84,7 +84,7 @@ async function fetchText(url: string): Promise<string> {
     const res = await fetch(url, {
       signal: ctrl.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; SettDegEtMal-bot/1.0; +https://settdegetmal.no)',
+        'User-Agent': 'Mozilla/5.0 (compatible; FitHub-bot/1.0; +https://fithub.no)',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'nb,no;q=0.9,en;q=0.5',
       },

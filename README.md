@@ -1,4 +1,4 @@
-# SettDegEtMål
+# FitHub
 
 Norsk markedsplass for trenings- og helsetjenester. Matcher brukere med PT-er, treningssentre, idrettslag, gruppetimer og ernæringsrådgivere basert på lokasjon, mål og preferanser.
 
@@ -68,7 +68,7 @@ Tjenester dekkes på tre måter i `service_coverage`:
 
 ```bash
 git clone https://github.com/Tjommern84/settdegetmal.git
-cd settdegetmal
+cd settdegetmal  # (repo heter fortsatt settdegetmal på GitHub)
 npm install
 cp .env.local.example .env.local   # fyll inn nøkler
 npm run dev

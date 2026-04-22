@@ -94,7 +94,7 @@ interface PTRecord {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🏋️  SettDegEtMål – push PT-leverandører til Supabase');
+  console.log('🏋️  FitHub – push PT-leverandører til Supabase');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   console.log();
 

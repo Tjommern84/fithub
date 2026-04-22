@@ -88,7 +88,7 @@ interface ErnæringRecord {
 }
 
 async function main() {
-  console.log('🥗  SettDegEtMål – push ernæringsrådgivere til Supabase');
+  console.log('🥗  FitHub – push ernæringsrådgivere til Supabase');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   console.log();
 

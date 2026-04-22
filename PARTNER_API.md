@@ -1,6 +1,6 @@
 ﻿# Partner API (lukket)
 
-Dette dokumentet beskriver den interne partner-APIen for settdegetmal.no. APIet er ikke offentlig, og kun tilgjengelig for avtalte samarbeidspartnere.
+Dette dokumentet beskriver den interne partner-APIen for fithub.no. APIet er ikke offentlig, og kun tilgjengelig for avtalte samarbeidspartnere.
 
 ## Tilgjengelige endepunkter
 
@@ -19,8 +19,8 @@ Dette dokumentet beskriver den interne partner-APIen for settdegetmal.no. APIet 
 
 ## Kontakt
 
-- Teknisk kontakt: tech@settdegetmal.no
-- Produktkontakt: partner@settdegetmal.no
+- Teknisk kontakt: tech@fithub.no
+- Produktkontakt: partner@fithub.no
 
 ## Viktig
 

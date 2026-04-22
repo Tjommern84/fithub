@@ -300,7 +300,7 @@ export default function MinSidePage() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `settdegetmal-data-${new Date().toISOString().split('T')[0]}.json`;
+    anchor.download = `fithub-data-${new Date().toISOString().split('T')[0]}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
     setExportStatus('done');

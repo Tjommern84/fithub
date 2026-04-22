@@ -250,7 +250,7 @@ export async function requestAccountDeletion(
     .from('leads')
     .update({
       name: 'Anonymisert',
-      email: 'anonymisert@settdegetmal.no',
+      email: 'anonymisert@fithub.no',
       message: 'Slettet av bruker',
     })
     .eq('user_id', user.id);

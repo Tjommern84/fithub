@@ -14,13 +14,13 @@ export async function generateMetadata({
   const category = await getCategoryById(params.id);
   if (!category) {
     return {
-      title: 'Kategori ikke funnet | settdegetmal.no',
+      title: 'Kategori ikke funnet | fithub.no',
       description: 'Vi finner dessverre ikke denne kategorien.',
     };
   }
   return {
-    title: `${category.name} | settdegetmal.no`,
-    description: category.description ?? 'Kuraterte tjenester fra settdegetmal.no.',
+    title: `${category.name} | fithub.no`,
+    description: category.description ?? 'Kuraterte tjenester fra fithub.no.',
   };
 }
 

@@ -1,4 +1,4 @@
-# Prosessrapport: settdegetmal.no
+# Prosessrapport: fithub.no
 
 **Versjon:** 0.1.0
 **Status:** Funksjonelt MVP
@@ -10,7 +10,7 @@
 ## 1. Prosjektoversikt
 
 ### Hva prosjektet er
-**settdegetmal.no** er en norsk markedsplasstjeneste som matcher sluttbrukere med trenings- og helsetilbydere. Plattformen fungerer som en "Finn.no for trening" der brukere besvarer et kort spørreskjema om sine mål, budsjett og preferanser, og deretter får presentert relevante tilbydere sortert etter match-score.
+**fithub.no** er en norsk markedsplasstjeneste som matcher sluttbrukere med trenings- og helsetilbydere. Plattformen fungerer som en "Finn.no for trening" der brukere besvarer et kort spørreskjema om sine mål, budsjett og preferanser, og deretter får presentert relevante tilbydere sortert etter match-score.
 
 ### Sluttproduktets funksjon
 - Guidet matching-flyt for brukere (mål → type → lokasjon → budsjett → resultater)

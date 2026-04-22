@@ -20,8 +20,8 @@ const dmSans = DM_Sans({
 });
 
 export const metadata = {
-  title: 'Sett deg et mål',
-  description: 'Matching av treningstilbydere og kunder',
+  title: 'FitHub',
+  description: 'Finn trening som passer deg – lokale tilbydere over hele Norge',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

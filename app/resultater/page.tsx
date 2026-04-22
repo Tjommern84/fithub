@@ -38,7 +38,7 @@ export async function generateMetadata({
   const label = mainCat
     ? CATEGORY_LABELS[mainCat]
     : TYPE_LABELS[rawType] ?? 'Finn treningstilbud';
-  return { title: `${label} – SettDegEtMål` };
+  return { title: `${label} – FitHub` };
 }
 
 export default async function ResultsPage({

@@ -100,7 +100,7 @@ async function searchPlaces(query: string): Promise<SerperPlace[]> {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🥗  SettDegEtMål – finn ernæringsrådgivere via Google Places');
+  console.log('🥗  FitHub – finn ernæringsrådgivere via Google Places');
   console.log();
 
   if (!SERPER_API_KEY) {

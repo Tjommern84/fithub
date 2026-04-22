@@ -141,7 +141,7 @@ function inferTags(text: string): string[] {
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
-  console.log('🏅  SettDegEtMål – namnbasert idrettsenrichment (nullkostnad)');
+  console.log('🏅  FitHub – namnbasert idrettsenrichment (nullkostnad)');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   if (typeFilter) console.log(`   Filter: type=${typeFilter}`);
   console.log();

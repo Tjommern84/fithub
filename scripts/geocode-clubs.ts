@@ -54,7 +54,7 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lon: numb
     const res = await fetch(url, {
       headers: {
         'Accept-Language': 'no',
-        'User-Agent': 'SettDegEtMal/1.0 (tjommern@gmail.com)',
+        'User-Agent': 'FitHub/1.0 (tjommern@gmail.com)',
       },
       signal: AbortSignal.timeout(10000),
     });
@@ -70,7 +70,7 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lon: numb
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
-  console.log('📍  SettDegEtMål – geocode klubber via Nominatim (gratis)');
+  console.log('📍  FitHub – geocode klubber via Nominatim (gratis)');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   if (typeFilter) console.log(`   Filter: type=${typeFilter}`);
   console.log(`   Delay: ${delayMs}ms (Nominatim: maks 1 req/sek)`);

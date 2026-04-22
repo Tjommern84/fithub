@@ -128,14 +128,14 @@ export async function generateMetadata({
 
   if (!cityKey || !(cityKey in cityCoordinates) || !goalData) {
     return {
-      title: 'Siden finnes ikke - settdegetmal.no',
+      title: 'Siden finnes ikke - fithub.no',
       description: 'Siden finnes ikke.',
     };
   }
 
   const cachedLocation = await findLocationByCity(cityKey);
   const canonicalLabel = cachedLocation?.label ?? getCityDisplayName(cityKey);
-  const pageTitle = `${goalData.data.label} i ${canonicalLabel} | settdegetmal.no`;
+  const pageTitle = `${goalData.data.label} i ${canonicalLabel} | fithub.no`;
   const pageUrl = `${appUrl}/trening/${cityKey}/${goalData.data.slug}`;
 
   return {

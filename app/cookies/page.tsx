@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { container } from '../../lib/ui';
 
 export const metadata: Metadata = {
-  title: 'Cookies - settdegetmal.no',
-  description: 'Informasjon om bruk av cookies på settdegetmal.no.',
+  title: 'Cookies - fithub.no',
+  description: 'Informasjon om bruk av cookies på fithub.no.',
 };
 
 export default function CookiesPage() {

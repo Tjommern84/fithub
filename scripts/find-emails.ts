@@ -96,7 +96,7 @@ async function scrapeEmailFromWebsite(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; SettDegEtMal/1.0)',
+        'User-Agent': 'Mozilla/5.0 (compatible; FitHub/1.0)',
         Accept: 'text/html',
       },
       signal: AbortSignal.timeout(10000),
@@ -140,7 +140,7 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('📧  SettDegEtMål – finn epostadresser (nullkostnad)');
+  console.log('📧  FitHub – finn epostadresser (nullkostnad)');
   if (dryRun)     console.log('   [DRY RUN – ingen endringer lagres]');
   if (skipBrreg)  console.log('   Hopper over BRREG-oppslag');
   if (skipScrape) console.log('   Hopper over website-scraping');

@@ -11,7 +11,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-slate-200 bg-white">
       <div className={`${container} flex flex-col gap-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between`}>
-        <p className="text-xs text-slate-500">© {new Date().getFullYear()} settdegetmal.no</p>
+        <p className="text-xs text-slate-500">© {new Date().getFullYear()} fithub.no</p>
         <div className="flex flex-wrap items-center gap-4">
           <button
             type="button"

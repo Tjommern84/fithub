@@ -196,7 +196,7 @@ async function searchSerper(query: string): Promise<SerperResponse | null> {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🏋️  SettDegEtMål – finn treningssenter-lokasjoner via Google');
+  console.log('🏋️  FitHub – finn treningssenter-lokasjoner via Google');
   console.log();
 
   if (!SERPER_API_KEY) {

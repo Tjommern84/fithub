@@ -17,7 +17,7 @@ export type GeocodeResult = {
 
 export class NominatimGeocoder {
   private baseUrl = 'https://nominatim.openstreetmap.org/search';
-  private userAgent = 'settdegetmal/1.0 (settdegetmal.no)';
+  private userAgent = 'fithub/1.0 (fithub.no)';
   private requestsPerSecond = 1; // Nominatim rate limit
   private lastRequestTime = 0;
 

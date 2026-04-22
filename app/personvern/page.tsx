@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { container } from '../../lib/ui';
 
 export const metadata: Metadata = {
-  title: 'Personvern - settdegetmal.no',
-  description: 'Hvordan settdegetmal.no behandler personopplysninger.',
+  title: 'Personvern - fithub.no',
+  description: 'Hvordan fithub.no behandler personopplysninger.',
 };
 
 export default function PersonvernPage() {
@@ -53,7 +53,7 @@ export default function PersonvernPage() {
         <h2 className="text-lg font-semibold text-slate-900">Kontakt</h2>
         <p>
           Send forespørsel om innsyn eller sletting til{' '}
-          <span className="font-semibold">privacy@settdegetmal.no</span>.
+          <span className="font-semibold">privacy@fithub.no</span>.
         </p>
       </section>
 

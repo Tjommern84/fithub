@@ -152,7 +152,7 @@ async function findWebsite(name: string, city: string): Promise<string | null> {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🔍  SettDegEtMål – finn manglende hjemmesider');
+  console.log('🔍  FitHub – finn manglende hjemmesider');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres i DB]');
   console.log();
 

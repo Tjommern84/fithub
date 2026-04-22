@@ -199,7 +199,7 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🏅  SettDegEtMål – NIF klubbimport');
+  console.log('🏅  FitHub – NIF klubbimport');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   console.log();
 

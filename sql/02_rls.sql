@@ -80,6 +80,19 @@ ALTER TABLE quality_events ENABLE ROW LEVEL SECURITY;
 CREATE POLICY quality_events_admin_select ON quality_events FOR SELECT USING (auth.role() = 'service_role');
 CREATE POLICY quality_events_insert_service ON quality_events FOR INSERT WITH CHECK (auth.role() = 'service_role');
 
+-- SERVICE_COVERAGE (public reference data — readable by all)
+ALTER TABLE service_coverage ENABLE ROW LEVEL SECURITY;
+CREATE POLICY service_coverage_public_read ON service_coverage FOR SELECT USING (true);
+
+-- SERVICE_TYPES (public reference data — readable by all)
+ALTER TABLE service_types ENABLE ROW LEVEL SECURITY;
+CREATE POLICY service_types_public_read ON service_types FOR SELECT USING (true);
+
+-- CITY_REFRESH_LOG (public reference data — readable by all)
+ALTER TABLE city_refresh_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY city_refresh_log_public_read ON city_refresh_log FOR SELECT USING (true);
+CREATE POLICY city_refresh_log_service_write ON city_refresh_log FOR ALL USING (auth.role() = 'service_role');
+
 -- FEEDBACK
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 CREATE POLICY feedback_insert ON feedback FOR INSERT WITH CHECK (true);

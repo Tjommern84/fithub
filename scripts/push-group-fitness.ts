@@ -103,7 +103,7 @@ interface GroupFitnessRecord {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🏃  SettDegEtMål – push group fitness til Supabase');
+  console.log('🏃  FitHub – push group fitness til Supabase');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   console.log();
 

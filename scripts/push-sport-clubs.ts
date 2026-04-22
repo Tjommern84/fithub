@@ -97,7 +97,7 @@ interface SportClubRecord {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('⚽  SettDegEtMål – push idrettslag til Supabase');
+  console.log('⚽  FitHub – push idrettslag til Supabase');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   console.log();
 

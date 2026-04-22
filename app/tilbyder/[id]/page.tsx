@@ -87,7 +87,7 @@ export async function generateMetadata({
 
   if (!service) {
     return {
-      title: 'Tilbyder ikke funnet – settdegetmal.no',
+      title: 'Tilbyder ikke funnet – fithub.no',
       description: 'Vi fant ikke tilbyderen du leter etter.',
     };
   }

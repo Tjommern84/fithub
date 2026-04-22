@@ -34,8 +34,8 @@ export const providerRepliedEmail = ({
 
 export const providerInviteEmail = ({ inviteLink }: ProviderInviteEmailParams) => {
   return {
-    subject: 'Du er invitert som tilbyder på settdegetmal.no',
-    body: `Hei,\n\nDu er invitert til å bli tilbyder på settdegetmal.no.\n\nBruk denne lenken for å komme i gang:\n${inviteLink}\n\nLenken er personlig og kan bare brukes én gang.\n`,
+    subject: 'Du er invitert som tilbyder på fithub.no',
+    body: `Hei,\n\nDu er invitert til å bli tilbyder på fithub.no.\n\nBruk denne lenken for å komme i gang:\n${inviteLink}\n\nLenken er personlig og kan bare brukes én gang.\n`,
   };
 };
 
@@ -71,7 +71,7 @@ export const bookingCancelledProviderEmail = ({
   const customer = userName ?? 'kunden';
   return {
     subject: `Booking kansellert - ${serviceName}`,
-    body: `Hei,\n\nBookingen med ${customer} på ${scheduledAt} har blitt kansellert.\n\nMed vennlig hilsen,\nsettdegetmal.no\n`,
+    body: `Hei,\n\nBookingen med ${customer} på ${scheduledAt} har blitt kansellert.\n\nMed vennlig hilsen,\nfithub.no\n`,
   };
 };
 
@@ -83,6 +83,6 @@ export const bookingCancelledUserEmail = ({
   const greeting = userName ? `Hei ${userName}` : 'Hei';
   return {
     subject: `Booking kansellert - ${serviceName}`,
-    body: `${greeting},\n\nDin booking med ${serviceName} på ${scheduledAt} har blitt kansellert.\n\nHvis du har spørsmål, ta kontakt med tilbyderen direkte.\n\nMed vennlig hilsen,\nsettdegetmal.no\n`,
+    body: `${greeting},\n\nDin booking med ${serviceName} på ${scheduledAt} har blitt kansellert.\n\nHvis du har spørsmål, ta kontakt med tilbyderen direkte.\n\nMed vennlig hilsen,\nfithub.no\n`,
   };
 };

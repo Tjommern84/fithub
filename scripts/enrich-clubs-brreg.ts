@@ -149,7 +149,7 @@ function sleep(ms: number) {
 
 // ── Main ──────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🏅  SettDegEtMål – berik idrettslag via BRREG');
+  console.log('🏅  FitHub – berik idrettslag via BRREG');
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   console.log();
 

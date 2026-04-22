@@ -343,7 +343,7 @@ BEGIN
     END
   LIMIT max_limit;
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 
 -- Grant execute permission so anon + authenticated roles (app) can call this function.
 -- Must re-run after DROP + CREATE since DROP removes grants.

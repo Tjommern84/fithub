@@ -112,7 +112,7 @@ function parseRows(html: string): Row[] {
 async function main() {
   console.log('Bygger Oslo postnummer -> bydel mapping...');
   const response = await fetch(SOURCE_URL, {
-    headers: { 'User-Agent': 'settdegetmal.no/1.0 (+local tooling)' },
+    headers: { 'User-Agent': 'fithub.no/1.0 (+local tooling)' },
   });
   if (!response.ok) {
     throw new Error(`Kunne ikke hente kilde: ${response.status}`);
