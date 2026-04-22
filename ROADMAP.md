@@ -55,9 +55,9 @@
 
 ### Vercel-deployment
 - [x] Tilkoblet GitHub (auto-deploy ved push til `main`)
-- [x] Domeneoppsett: `xn--settdegetm-s8a.com` (punycode for settdegetmål.com)
-- [x] Vercel DNS aktivert for `.com`-domenet
-- [ ] DNS for `settdegetmål.no` — venter på Uniweb NS-bytte
+- [x] **`fithub.no`** — live og fungerende (DNS via Webhuset, A-record → Vercel)
+- [x] `settdegetmål.com` konfigurert som alias i Vercel
+- [x] Vercel CLI koblet til (`npx vercel` fungerer fra prosjektmappen)
 
 ### Infrastruktur-fikser (april 2026)
 - [x] `scripts/` ekskludert fra `tsconfig.json` (byggebrytende TypeScript-feil i skript kan ikke lenger bryte Vercel-bygget)
