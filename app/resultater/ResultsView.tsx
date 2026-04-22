@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -13,8 +13,7 @@ const ServiceMap = dynamic(() => import('../../components/ServiceMap'), { ssr: f
 const PAGE_SIZE = 10;
 
 type Props = {
-  nationwide: RankedService[];
-  local: RankedService[];
+  results: RankedService[];
   categoryLabel: string;
   locationLabel: string | null;
   sort: SortBy;
@@ -139,8 +138,7 @@ function ResultSection({
 }
 
 export default function ResultsView({
-  nationwide,
-  local,
+  results,
   categoryLabel,
   locationLabel,
   sort,
@@ -171,12 +169,7 @@ export default function ResultsView({
     [router, searchParams]
   );
 
-  const hasResults = nationwide.length > 0 || local.length > 0;
-
-  const localHeading = useMemo(() => {
-    if (locationLabel) return `Nær ${locationLabel}`;
-    return 'I ditt område';
-  }, [locationLabel]);
+  const hasResults = results.length > 0;
 
   return (
     <div>
@@ -198,7 +191,7 @@ export default function ResultsView({
           ))}
         </select>
         <span className="text-xs text-slate-400 ml-auto">
-          {nationwide.length + local.length} treff
+          {results.length} treff
         </span>
       </div>
 
@@ -208,7 +201,7 @@ export default function ResultsView({
           <ServiceMap
             center={{ lat: centerLat, lon: centerLon }}
             radiusKm={radiusKm}
-            services={local}
+            services={results}
             locationLabel={locationLabel}
           />
         </div>
@@ -229,17 +222,11 @@ export default function ResultsView({
       )}
 
       <div className="space-y-10">
-        {locationLabel && local.length > 0 && (
-          <ResultSection title={localHeading} items={local} />
-        )}
-        {nationwide.length > 0 && (
+        {hasResults && (
           <ResultSection
-            title={locationLabel ? 'Tilgjengelig i hele Norge' : 'Landsdekkende tilbud'}
-            items={nationwide}
+            title={locationLabel ? `Nær ${locationLabel}` : 'Alle treff'}
+            items={results}
           />
-        )}
-        {!locationLabel && local.length > 0 && (
-          <ResultSection title={localHeading} items={local} />
         )}
       </div>
     </div>

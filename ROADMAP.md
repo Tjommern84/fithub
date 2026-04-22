@@ -81,7 +81,6 @@
 - [ ] Dublett-deteksjon og sammenslåing på tvers av datakilder
 - [ ] Manuell verifikasjon av toppresultater (100 per kategori)
 - [ ] Hjemmeside-validering (er URL-ene fortsatt aktive?)
-- [ ] NIF-import når API-credentials er på plass
 - [ ] `refresh-city` utvidelse til gymkjeder og yoga-studioer
 
 ### DNS og domene

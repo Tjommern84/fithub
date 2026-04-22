@@ -120,7 +120,7 @@ DECLARE
   type_candidate text := COALESCE(p_service_type, 'any');
   budget_candidate text := COALESCE(p_budget, 'any');
   venue_candidate text := COALESCE(p_venue, 'either');
-  sort_mode text := COALESCE(p_sort, 'best_match');
+  sort_mode text := COALESCE(NULLIF(p_sort, ''), 'best_match');
   max_limit int := LEAST(GREATEST(COALESCE(p_limit, 20), 1), 100);
   normalized_query text := NULL;
   borough_candidate text := NULL;
@@ -128,6 +128,10 @@ DECLARE
 BEGIN
   IF p_lat IS NOT NULL AND p_lon IS NOT NULL THEN
     user_point := ST_SetSRID(ST_MakePoint(p_lon, p_lat), 4326);
+    -- Default to distance sort when user has a location
+    IF p_sort IS NULL OR p_sort = '' THEN
+      sort_mode := 'nearest';
+    END IF;
   END IF;
 
   IF p_query IS NOT NULL THEN
@@ -179,6 +183,10 @@ BEGIN
              AND user_point IS NOT NULL
              AND s_loc.base_location IS NOT NULL THEN
           ST_Distance(s_loc.base_location, user_point) / 1000
+        WHEN sc.type = 'region'
+             AND user_point IS NOT NULL
+             AND s_loc.base_location IS NOT NULL THEN
+          ST_Distance(s_loc.base_location, user_point) / 1000
         ELSE NULL
       END AS distance_km,
       CASE
@@ -211,9 +219,11 @@ BEGIN
       AND ST_DWithin(s_loc.base_location, user_point, 25 * 1000)
     )
     OR (
+      -- Only truly online/digital services appear nationwide
       sc.type = 'region'
       AND sc.region IS NOT NULL
       AND lower(sc.region) IN ('norway', 'nordic')
+      AND 'online' = ANY(s_loc.venues)
     )
     ORDER BY sc.service_id, coverage_rank, COALESCE(ST_Distance(sc.radius_center, user_point) / 1000, 0)
   ),

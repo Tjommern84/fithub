@@ -151,8 +151,6 @@ export default async function ResultsPage({
     }
   }
 
-  const nationwide = results.filter((r) => r.matchReason.includes('hele'));
-  const local      = results.filter((r) => !r.matchReason.includes('hele'));
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -187,8 +185,7 @@ export default async function ResultsPage({
           </div>
         ) : (
           <ResultsView
-            nationwide={nationwide}
-            local={local}
+            results={results}
             categoryLabel={categoryLabel}
             locationLabel={locationLabel}
             sort={sort}

@@ -76,7 +76,16 @@
     "emails:find": "tsx scripts/find-emails.ts",
     "emails:find:dry": "tsx scripts/find-emails.ts --dry-run --limit=20",
     "emails:find:sport": "tsx scripts/find-emails.ts --type=sport",
-    "emails:find:pt": "tsx scripts/find-emails.ts --type=pt"
+    "emails:find:pt": "tsx scripts/find-emails.ts --type=pt",
+    "osm:geocode": "tsx scripts/geocode-osm-cities.ts",
+    "osm:geocode:dry": "tsx scripts/geocode-osm-cities.ts --dry-run --limit=20",
+    "osm:find": "tsx scripts/find-osm-facilities.ts",
+    "osm:find:yoga": "tsx scripts/find-osm-facilities.ts --tag=yoga",
+    "osm:find:climbing": "tsx scripts/find-osm-facilities.ts --tag=climbing",
+    "osm:push": "tsx scripts/push-osm-facilities.ts",
+    "osm:push:dry": "tsx scripts/push-osm-facilities.ts --dry-run",
+    "anlegg:import": "tsx scripts/import-anleggsregisteret.ts",
+    "anlegg:import:dry": "tsx scripts/import-anleggsregisteret.ts --dry-run"
   },
   "dependencies": {
     "@react-leaflet/core": "^2.1.0",
