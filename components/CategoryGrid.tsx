@@ -179,8 +179,8 @@ function LocationBar({
       );
       if (!res.ok) return null;
       const d = await res.json() as { display_name?: string; address?: Record<string, string> };
-      return d.address?.city || d.address?.town || d.address?.village ||
-        d.address?.municipality || d.display_name || null;
+      return d.address?.city || d.address?.town || d.address?.municipality ||
+        d.address?.village || d.display_name || null;
     } catch { return null; }
   };
 
@@ -557,7 +557,7 @@ export default function CategoryGrid() {
       );
       const json = await res.json();
       const addr = json.address ?? {};
-      return addr.city ?? addr.town ?? addr.village ?? addr.municipality ?? 'Min lokasjon';
+      return addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? 'Min lokasjon';
     } catch {
       return 'Min lokasjon';
     }
