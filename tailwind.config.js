@@ -7,6 +7,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
+        barlow: ['var(--font-barlow)', 'sans-serif'],
         heading: ['var(--font-outfit)', 'sans-serif'],
         sans: ['var(--font-dm-sans)', 'sans-serif'],
       },

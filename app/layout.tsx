@@ -1,9 +1,16 @@
 ﻿import './globals.css';
 import type { ReactNode } from 'react';
-import { Outfit, DM_Sans } from 'next/font/google';
+import { Barlow_Condensed, Outfit, DM_Sans } from 'next/font/google';
 import ConsentGate from '../components/ConsentGate';
 import TopNav from '../components/TopNav';
 import Footer from '../components/Footer';
+
+const barlowCondensed = Barlow_Condensed({
+  subsets: ['latin'],
+  variable: '--font-barlow',
+  weight: ['700'],
+  display: 'swap',
+});
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -26,7 +33,7 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="no" className={`${outfit.variable} ${dmSans.variable}`}>
+    <html lang="no" className={`${barlowCondensed.variable} ${outfit.variable} ${dmSans.variable}`}>
       <body className="min-h-screen bg-[#f7f4ef] font-sans text-slate-900">
         <div className="flex min-h-screen flex-col">
           <TopNav />
