@@ -467,67 +467,6 @@ function CategoryCard({
   );
 }
 
-// ─── TagPanel ─────────────────────────────────────────────────────────────────
-
-function TagPanel({
-  config,
-  selectedTags,
-  onToggle,
-  onNavigate,
-  location,
-}: {
-  config: CategoryConfig;
-  selectedTags: string[];
-  onToggle: (v: string) => void;
-  onNavigate: () => void;
-  location: LocationState;
-}) {
-  const accent = ACCENT[config.key];
-
-  return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-black/[0.06] bg-white/80 shadow-[0_2px_24px_rgba(0,0,0,0.07)] backdrop-blur-md">
-      <div className="p-4 sm:p-5">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-          {config.label} — hva passer deg?
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {config.tags.map((tag) => {
-            const active = selectedTags.includes(tag.value);
-            return (
-              <button
-                key={tag.value}
-                type="button"
-                onClick={() => onToggle(tag.value)}
-                className={[
-                  'rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-150',
-                  active
-                    ? accent.activeChip
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50',
-                ].join(' ')}
-              >
-                {tag.label}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-slate-400">
-            {selectedTags.length === 0 ? 'Viser alt innen kategorien' : `${selectedTags.length} filter valgt`}
-          </p>
-          <button
-            type="button"
-            onClick={onNavigate}
-            className="w-full rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700 active:scale-95 sm:w-auto"
-          >
-            Se resultater nær {firstPart(location.label)} →
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 const GEO_PROMPT_KEY = 'sdem_geo_prompt_dismissed';
@@ -535,8 +474,6 @@ const GEO_PROMPT_KEY = 'sdem_geo_prompt_dismissed';
 export default function CategoryGrid() {
   const router = useRouter();
   const [location, setLocation] = useState<LocationState | null>(null);
-  const [selectedCat, setSelectedCat] = useState<MainCategory | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [geoPrompt, setGeoPrompt] = useState<'hidden' | 'asking' | 'visible'>('hidden');
   const [geoLoading, setGeoLoading] = useState(false);
 
@@ -605,19 +542,8 @@ export default function CategoryGrid() {
 
   const handleCardClick = useCallback((key: MainCategory) => {
     if (!location) return;
-    if (selectedCat === key) {
-      doNavigate(key, selectedTags);
-    } else {
-      setSelectedCat(key);
-      setSelectedTags([]);
-    }
-  }, [location, selectedCat, selectedTags, doNavigate]);
-
-  const toggleTag = useCallback((value: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(value) ? prev.filter((t) => t !== value) : [...prev, value]
-    );
-  }, []);
+    doNavigate(key, []);
+  }, [location, doNavigate]);
 
   const updateRadius = useCallback((r: RadiusKm) => {
     setLocation((prev) => {
@@ -628,10 +554,6 @@ export default function CategoryGrid() {
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const activeCatConfig = selectedCat
-    ? CATEGORIES.find((c) => c.key === selectedCat) ?? null
-    : null;
 
   return (
     <section>
@@ -704,24 +626,13 @@ export default function CategoryGrid() {
             <CategoryCard
               key={cat.key}
               config={cat}
-              selected={selectedCat === cat.key}
+              selected={false}
               disabled={!location}
               onClick={() => handleCardClick(cat.key)}
               className="h-56 sm:h-64 lg:h-72"
             />
           ))}
         </div>
-
-        {/* ── Tag panel ────────────────────────────────────────────────── */}
-        {activeCatConfig && location && (
-          <TagPanel
-            config={activeCatConfig}
-            selectedTags={selectedTags}
-            onToggle={toggleTag}
-            onNavigate={() => doNavigate(selectedCat!, selectedTags)}
-            location={location}
-          />
-        )}
 
         <p className="mx-auto mt-8 max-w-xl text-center text-sm font-light leading-relaxed text-slate-400">
           Velg lokasjon, velg kategori og filtrer. Ingen generiske treff.

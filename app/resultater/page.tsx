@@ -188,7 +188,6 @@ export default async function ResultsPage({
             results={results}
             categoryLabel={categoryLabel}
             locationLabel={locationLabel}
-            sort={sort}
             centerLat={lat}
             centerLon={lon}
             radiusKm={radiusKm}

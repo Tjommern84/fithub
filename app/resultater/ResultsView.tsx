@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { RankedService } from '../../lib/matching';
-import type { SortBy } from '../../lib/matching';
-import { sortLabels, serviceTypeLabels } from '../../lib/resultFilters';
+import { serviceTypeLabels } from '../../lib/resultFilters';
+import { CATEGORIES } from '../../lib/categoryConfig';
 
 const ServiceMap = dynamic(() => import('../../components/ServiceMap'), { ssr: false });
 
@@ -16,7 +16,6 @@ type Props = {
   results: RankedService[];
   categoryLabel: string;
   locationLabel: string | null;
-  sort: SortBy;
   centerLat?: number;
   centerLon?: number;
   radiusKm?: number;
@@ -141,7 +140,6 @@ export default function ResultsView({
   results,
   categoryLabel,
   locationLabel,
-  sort,
   centerLat,
   centerLon,
   radiusKm = 10,
@@ -160,40 +158,49 @@ export default function ResultsView({
     }).catch(() => { /* ignore errors — this is best-effort */ });
   }, [locationLabel]);
 
-  const handleSortChange = useCallback(
-    (newSort: string) => {
+  const cat = searchParams.get('cat');
+  const activeTags = (searchParams.get('tags') ?? '').split(',').filter(Boolean);
+  const catConfig = CATEGORIES.find((c) => c.key === cat) ?? null;
+
+  const handleTagToggle = useCallback(
+    (value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      params.set('sort', newSort);
+      const next = activeTags.includes(value)
+        ? activeTags.filter((t) => t !== value)
+        : [...activeTags, value];
+      if (next.length > 0) params.set('tags', next.join(','));
+      else params.delete('tags');
       router.replace(`/resultater?${params.toString()}`);
     },
-    [router, searchParams]
+    [router, searchParams, activeTags]
   );
 
   const hasResults = results.length > 0;
 
   return (
     <div>
-      {/* Sort bar */}
-      <div className="flex items-center gap-3 mb-6">
-        <label htmlFor="sort" className="text-xs uppercase tracking-wide text-slate-400 shrink-0">
-          Sorter
-        </label>
-        <select
-          id="sort"
-          value={sort}
-          onChange={(e) => handleSortChange(e.target.value)}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-400"
-        >
-          {Object.entries(sortLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
+      {/* Tag filter panel */}
+      {catConfig && (
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          {catConfig.tags.map((tag) => (
+            <button
+              key={tag.value}
+              type="button"
+              onClick={() => handleTagToggle(tag.value)}
+              className={
+                activeTags.includes(tag.value)
+                  ? 'rounded-full px-3 py-1 text-sm font-medium bg-slate-800 text-white transition-colors'
+                  : 'rounded-full px-3 py-1 text-sm font-medium border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition-colors'
+              }
+            >
+              {tag.label}
+            </button>
           ))}
-        </select>
-        <span className="text-xs text-slate-400 ml-auto">
-          {results.length} treff
-        </span>
-      </div>
+          <span className="ml-auto text-xs text-slate-400 self-center">
+            {results.length} treff
+          </span>
+        </div>
+      )}
 
       {/* Map — shown when we have a centre coordinate */}
       {centerLat != null && centerLon != null && (
