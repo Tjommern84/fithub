@@ -32,7 +32,7 @@ export async function sendEmail(params: {
       to: params.to,
       subject: params.subject,
       text: params.body,
-      ...(params.replyTo ? { reply_to: params.replyTo } : {}),
+      ...(params.replyTo ? { replyTo: params.replyTo } : {}),
     });
 
     if (error) {

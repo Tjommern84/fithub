@@ -1,12 +1,25 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import { submitContactForm, type ContactState } from './actions';
 
 const SUBJECTS = ['Spørsmål', 'Tilbakemelding', 'Bli listeoppført', 'Annet'];
 
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
+    >
+      {pending ? 'Sender…' : 'Send melding'}
+    </button>
+  );
+}
+
 export default function ContactForm() {
-  const [state, action, pending] = useActionState<ContactState, FormData>(submitContactForm, null);
+  const [state, action] = useFormState<ContactState, FormData>(submitContactForm, null);
 
   if (state?.ok) {
     return (
@@ -84,13 +97,7 @@ export default function ContactForm() {
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="w-full rounded-lg bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50 transition-colors"
-      >
-        {pending ? 'Sender…' : 'Send melding'}
-      </button>
+      <SubmitButton />
     </form>
   );
 }
