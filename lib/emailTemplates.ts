@@ -86,3 +86,25 @@ export const bookingCancelledUserEmail = ({
     body: `${greeting},\n\nDin booking med ${serviceName} på ${scheduledAt} har blitt kansellert.\n\nHvis du har spørsmål, ta kontakt med tilbyderen direkte.\n\nMed vennlig hilsen,\nfithub.no\n`,
   };
 };
+
+export type ContactFormEmailParams = {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+};
+
+export const contactFormEmail = ({ name, email, subject, message }: ContactFormEmailParams) => ({
+  subject: `[Kontakt] ${subject} – fra ${name}`,
+  body: `Ny kontaktmelding fra fithub.no\n\nNavn: ${name}\nE-post: ${email}\nEmne: ${subject}\n\nMelding:\n${message}\n\n---\nSvar direkte på denne e-posten for å kontakte ${name}.`,
+});
+
+export const contactAutoReplyEmail = ({ name }: { name: string }) => ({
+  subject: 'Vi har mottatt din melding – fithub.no',
+  body: `Hei ${name},\n\nTakk for at du tok kontakt! Vi har mottatt meldingen din og svarer innen 1–2 virkedager.\n\nMed vennlig hilsen,\nFitHub\npost@fithub.no\n`,
+});
+
+export const feedbackNotificationEmail = ({ message }: { message: string }) => ({
+  subject: 'Ny tilbakemelding – fithub.no',
+  body: `Ny tilbakemelding mottatt på fithub.no:\n\n${message}\n`,
+});

@@ -15,6 +15,7 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   body: string;
+  replyTo?: string;
 }): Promise<{ ok: boolean; message?: string }> {
   if (!resendKey || !resendFrom) {
     return { ok: false, message: 'Mangler e-postkonfigurasjon.' };
@@ -31,6 +32,7 @@ export async function sendEmail(params: {
       to: params.to,
       subject: params.subject,
       text: params.body,
+      ...(params.replyTo ? { reply_to: params.replyTo } : {}),
     });
 
     if (error) {

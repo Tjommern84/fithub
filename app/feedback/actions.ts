@@ -1,6 +1,8 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { sendEmail, isEmailConfigured } from '../../lib/emailClient';
+import { feedbackNotificationEmail } from '../../lib/emailTemplates';
 
 const getSupabase = (accessToken?: string) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -78,6 +80,12 @@ export async function submitFeedback(
 
   if (insertError) {
     return { ok: false, message: 'Kunne ikke lagre feedback nå.' };
+  }
+
+  if (isEmailConfigured) {
+    const adminEmail = process.env.ADMIN_EMAIL ?? 'post@fithub.no';
+    const tpl = feedbackNotificationEmail({ message });
+    await sendEmail({ to: adminEmail, ...tpl });
   }
 
   return { ok: true, message: 'Takk for hjelpen!' };

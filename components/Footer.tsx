@@ -13,10 +13,16 @@ export default function Footer() {
       <div className={`${container} flex flex-col gap-4 py-8 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between`}>
         <p className="text-xs text-slate-500">© {new Date().getFullYear()} fithub.no</p>
         <div className="flex flex-wrap items-center gap-4">
+          <Link href="/kontakt" className="text-sm font-semibold text-slate-700 hover:text-slate-900">
+            Kontakt oss
+          </Link>
+          <a href="mailto:post@fithub.no" className="hover:text-slate-900">
+            post@fithub.no
+          </a>
           <button
             type="button"
             onClick={() => setFeedbackOpen(true)}
-            className="text-sm font-semibold text-slate-700 hover:text-slate-900"
+            className="hover:text-slate-900"
           >
             Gi feedback
           </button>
