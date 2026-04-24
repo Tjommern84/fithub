@@ -5,7 +5,7 @@ import type { RankedService } from '../../lib/matching';
 import { geocodeNorwegianCity } from '../../lib/geocode';
 import { searchServices } from '../../lib/matchingDb';
 import { parseServiceType, parseSort, parseVenue } from '../../lib/resultFilters';
-import { parseMainCategory, CATEGORY_LABELS } from '../../lib/categoryConfig';
+import { parseMainCategory, CATEGORY_LABELS, getCategoryConfig } from '../../lib/categoryConfig';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 import ResultsView from './ResultsView';
 
@@ -154,31 +154,53 @@ export default async function ResultsPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  const catTheme = mainCategory ? getCategoryConfig(mainCategory)?.theme : null;
+
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="max-w-5xl mx-auto px-4 py-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6"
-        >
-          ← Tilbake
-        </Link>
 
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900">{categoryLabel}</h1>
-          {locationLabel && (
-            <p className="mt-1 text-slate-500 text-sm">
-              Nær {locationLabel}
-              {rawBorough ? ` · ${rawBorough}` : ''}
-              {tagsArray.length > 0 && (
-                <span className="ml-2 text-slate-400">
-                  · {tagsArray.join(', ')}
-                </span>
-              )}
-            </p>
-          )}
+      {/* ── Category header ──────────────────────────────────────────────── */}
+      {catTheme ? (
+        <div style={{ background: catTheme.headerBg, position: 'relative' }}>
+          {/* Accent bar */}
+          <div
+            style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
+              background: `linear-gradient(90deg, ${catTheme.barStart}, ${catTheme.barEnd})`,
+            }}
+          />
+          <div className="max-w-5xl mx-auto px-4 pt-7 pb-6">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 text-xs mb-5"
+              style={{ color: catTheme.subColor }}
+            >
+              ← Tilbake
+            </Link>
+            <h1
+              className="font-barlow text-4xl font-bold leading-tight"
+              style={{ color: catTheme.titleColor, letterSpacing: '-0.01em' }}
+            >
+              {categoryLabel}
+            </h1>
+            {locationLabel && (
+              <p className="mt-1 text-sm" style={{ color: catTheme.subColor }}>
+                Nær {locationLabel}{rawBorough ? ` · ${rawBorough}` : ''}
+              </p>
+            )}
+          </div>
         </div>
+      ) : (
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <Link href="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6">
+            ← Tilbake
+          </Link>
+          <h1 className="text-3xl font-bold text-slate-900 mb-6">{categoryLabel}</h1>
+        </div>
+      )}
 
+      {/* ── Results ──────────────────────────────────────────────────────── */}
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {fetchError ? (
           <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             Kunne ikke hente resultater: {fetchError}
