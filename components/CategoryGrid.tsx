@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES, type CategoryConfig, type MainCategory } from '../lib/categoryConfig';
 
@@ -41,27 +41,31 @@ const OSLO_BOROUGHS = [
   'Søndre Nordstrand', 'Ullern', 'Vestre Aker', 'Østensjø',
 ] as const;
 
-const ICONS: Record<MainCategory, React.ReactElement> = {
-  'trene-selv': (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M6 12h12"/><path d="M6 8v8"/><path d="M18 8v8"/><path d="M4 10v4"/><path d="M20 10v4"/>
-    </svg>
-  ),
-  'trene-sammen': (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  ),
-  'oppfolging': (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-    </svg>
-  ),
-  'aktivitet-sport': (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="8" r="6"/><path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11"/>
-    </svg>
-  ),
+const ACCENT: Record<MainCategory, {
+  gradient: string;
+  activeChip: string;
+  ring: string;
+}> = {
+  'trene-selv': {
+    gradient: 'from-amber-500/70 via-orange-400/40 to-transparent',
+    activeChip: 'bg-amber-500 border-amber-500 text-white',
+    ring: 'ring-amber-400',
+  },
+  'trene-sammen': {
+    gradient: 'from-fuchsia-500/70 via-pink-400/40 to-transparent',
+    activeChip: 'bg-fuchsia-500 border-fuchsia-500 text-white',
+    ring: 'ring-fuchsia-400',
+  },
+  'oppfolging': {
+    gradient: 'from-sky-500/70 via-cyan-400/40 to-transparent',
+    activeChip: 'bg-sky-500 border-sky-500 text-white',
+    ring: 'ring-sky-400',
+  },
+  'aktivitet-sport': {
+    gradient: 'from-emerald-500/70 via-teal-400/40 to-transparent',
+    activeChip: 'bg-emerald-500 border-emerald-500 text-white',
+    ring: 'ring-emerald-400',
+  },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -350,103 +354,115 @@ function LocationBar({
 
 function CategoryCard({
   config,
+  selected,
   disabled,
   onClick,
   className = '',
 }: {
   config: CategoryConfig;
+  selected: boolean;
   disabled: boolean;
   onClick: () => void;
   className?: string;
 }) {
-  const { theme } = config;
+  const [imgIdx, setImgIdx] = useState(0);
+  const [hovering, setHovering] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const touchStartX = useRef<number | null>(null);
+  const accent = ACCENT[config.key];
+
+  useEffect(() => {
+    if (hovering && config.images.length > 1) {
+      intervalRef.current = setInterval(() => {
+        setImgIdx((p) => (p + 1) % config.images.length);
+      }, 1800);
+    } else {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [hovering, config.images.length]);
+
+  const cycleImg = (dir: 1 | -1) =>
+    setImgIdx((p) => (p + dir + config.images.length) % config.images.length);
 
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      aria-label={`${config.label} – ${config.description}`}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+      onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current == null) return;
+        const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+        if (Math.abs(delta) > 30) cycleImg(delta < 0 ? 1 : -1);
+        touchStartX.current = null;
+      }}
       className={[
-        'block w-full overflow-hidden rounded-[14px] text-left',
+        'group relative block w-full overflow-hidden rounded-2xl text-left',
         'border border-black/[0.08]',
         'shadow-[0_2px_24px_rgba(0,0,0,0.07)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.14)]',
-        'hover:-translate-y-[3px] transition-all duration-200 ease-out',
+        'transition-all duration-300 ease-out',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        selected
+          ? `ring-2 ${accent.ring} ring-offset-2 scale-[1.02]`
+          : 'hover:-translate-y-1 hover:scale-[1.015]',
         disabled ? 'pointer-events-none opacity-40 grayscale' : 'cursor-pointer',
         className,
       ].join(' ')}
-      style={{ ['--focus-ring' as string]: theme.accent }}
     >
-      {/* Header zone */}
+      {/* Background image */}
       <div
-        className="relative"
-        style={{ background: theme.headerBg, minHeight: '110px', padding: '18px 18px 14px' }}
-      >
-        {/* Accent bar */}
-        <div
-          className="absolute left-0 right-0 top-0 h-[3px]"
-          style={{ background: `linear-gradient(90deg, ${theme.barStart}, ${theme.barEnd})` }}
-        />
+        className="absolute inset-0 bg-cover bg-center transition-transform duration-700 will-change-transform group-hover:scale-105"
+        style={{ backgroundImage: `url('${config.images[imgIdx]}')` }}
+      />
+      {/* Gradient overlays */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${accent.gradient}`} />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
 
-        {/* Icon box */}
-        <div
-          className="mb-3 flex items-center justify-center rounded-[10px]"
-          style={{
-            width: '38px', height: '38px',
-            background: `${theme.accent}33`,
-            color: theme.accent,
-          }}
-        >
-          {ICONS[config.key]}
-        </div>
-
-        {/* Title */}
-        <h2
-          className="font-barlow text-xl font-bold leading-tight"
-          style={{ color: theme.titleColor, letterSpacing: '-0.01em' }}
-        >
-          {config.label}
-        </h2>
-
-        {/* Chip tags */}
-        <div className="mt-2.5 flex flex-wrap gap-[5px]">
+      {/* Content */}
+      <div className="relative z-10 flex h-full flex-col justify-between p-5">
+        <div className="flex flex-wrap gap-1.5">
           {config.tags.slice(0, 3).map((t) => (
             <span
               key={t.value}
-              className="rounded-full text-[10px] font-medium"
-              style={{
-                padding: '3px 8px',
-                background: `${theme.accent}40`,
-                color: theme.titleColor,
-                letterSpacing: '0.03em',
-              }}
+              className="rounded-full border border-white/25 bg-white/15 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm"
             >
               {t.label}
             </span>
           ))}
         </div>
+
+        <div>
+          {selected && (
+            <span className="mb-1.5 inline-block rounded-full bg-white/90 px-2.5 py-0.5 text-[10px] font-bold text-slate-900">
+              Valgt
+            </span>
+          )}
+          <h2 className="font-heading text-lg font-bold leading-tight text-white sm:text-xl">
+            {config.label}
+          </h2>
+          <p className="mt-1 line-clamp-1 text-sm font-light text-white/75">
+            {config.description}
+          </p>
+        </div>
       </div>
 
-      {/* Body zone */}
-      <div style={{ background: '#fff', borderTop: '0.5px solid #E5E5E5', padding: '14px 18px' }}>
-        {config.tags.slice(0, 3).map((t, i) => (
-          <div
-            key={t.value}
-            className="flex items-center gap-2"
-            style={{
-              padding: '5px 0',
-              borderBottom: i < 2 ? '0.5px solid #E5E5E5' : 'none',
-            }}
-          >
+      {/* Image progress dots */}
+      {config.images.length > 1 && (
+        <div className="absolute bottom-4 right-4 flex items-center gap-1">
+          {config.images.map((_, i) => (
             <span
-              className="shrink-0 rounded-full"
-              style={{ width: '6px', height: '6px', background: theme.accent }}
+              key={`${config.key}-dot-${i}`}
+              className={[
+                'h-1 rounded-full transition-all duration-300',
+                i === imgIdx ? 'w-4 bg-white' : 'w-1 bg-white/40',
+              ].join(' ')}
             />
-            <span style={{ fontSize: '13px', color: '#555' }}>{t.label}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </button>
   );
 }
@@ -605,14 +621,15 @@ export default function CategoryGrid() {
         </div>
 
         {/* ── 2×2 category grid ─────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+        <div className="grid grid-cols-2 gap-4 sm:gap-5">
           {CATEGORIES.map((cat) => (
             <CategoryCard
               key={cat.key}
               config={cat}
+              selected={false}
               disabled={!location}
               onClick={() => handleCardClick(cat.key)}
-              className=""
+              className="h-56 sm:h-64 lg:h-72"
             />
           ))}
         </div>

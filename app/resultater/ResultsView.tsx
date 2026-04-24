@@ -182,23 +182,20 @@ export default function ResultsView({
       {/* Tag filter panel */}
       {catConfig && (
         <div className="flex flex-wrap items-center gap-2 mb-6">
-          {catConfig.tags.map((tag) => {
-            const active = activeTags.includes(tag.value);
-            return (
-              <button
-                key={tag.value}
-                type="button"
-                onClick={() => handleTagToggle(tag.value)}
-                className="rounded-full px-3 py-1 text-sm font-medium transition-colors"
-                style={active
-                  ? { background: catConfig.theme.accent, color: '#fff' }
-                  : { background: '#fff', border: '0.5px solid #E5E5E5', color: '#555' }
-                }
-              >
-                {tag.label}
-              </button>
-            );
-          })}
+          {catConfig.tags.map((tag) => (
+            <button
+              key={tag.value}
+              type="button"
+              onClick={() => handleTagToggle(tag.value)}
+              className={
+                activeTags.includes(tag.value)
+                  ? 'rounded-full px-3 py-1 text-sm font-medium bg-slate-800 text-white transition-colors'
+                  : 'rounded-full px-3 py-1 text-sm font-medium border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 transition-colors'
+              }
+            >
+              {tag.label}
+            </button>
+          ))}
           <span className="ml-auto text-xs text-slate-400 self-center">
             {results.length} treff
           </span>

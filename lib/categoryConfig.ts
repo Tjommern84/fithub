@@ -6,23 +6,11 @@ export type MainCategory =
 
 export type TagOption = { label: string; value: string };
 
-export type CategoryTheme = {
-  accent: string;
-  headerBg: string;
-  titleColor: string;
-  subColor: string;
-  badgeBg: string;
-  badgeText: string;
-  barStart: string;
-  barEnd: string;
-};
-
 export type CategoryConfig = {
   key: MainCategory;
   label: string;
   description: string;
   tags: TagOption[];
-  theme: CategoryTheme;
   accent: string;
   images: string[];
   /** Legacy service types that belong to this category. */
@@ -41,16 +29,6 @@ export const CATEGORIES: CategoryConfig[] = [
       { label: 'Functional',    value: 'functional' },
       { label: 'Hjemmetrening', value: 'hjemmetrening' },
     ],
-    theme: {
-      accent:     '#D4872A',
-      headerBg:   '#1C1108',
-      titleColor: '#F5D99A',
-      subColor:   '#C49A5A',
-      badgeBg:    '#FFF3DC',
-      badgeText:  '#7A4A10',
-      barStart:   '#D4872A',
-      barEnd:     '#F5C05A',
-    },
     accent: 'from-amber-300/60 via-orange-300/40 to-rose-300/30',
     images: [
       '/bilder/Treningssenter/pexels-glebkrs-2628215.jpg',
@@ -70,16 +48,6 @@ export const CATEGORIES: CategoryConfig[] = [
       { label: 'Bootcamp',   value: 'bootcamp' },
       { label: 'Løpegruppe', value: 'løpegruppe' },
     ],
-    theme: {
-      accent:     '#8B5CF6',
-      headerBg:   '#0F0A1E',
-      titleColor: '#D4C8F8',
-      subColor:   '#9B8CC4',
-      badgeBg:    '#EDE9FF',
-      badgeText:  '#4C2DA0',
-      barStart:   '#7C3AED',
-      barEnd:     '#C084FC',
-    },
     accent: 'from-fuchsia-300/60 via-pink-300/40 to-rose-300/30',
     images: [
       '/bilder/Gruppetimer/pexels-airfit-6150627.jpg',
@@ -99,16 +67,6 @@ export const CATEGORIES: CategoryConfig[] = [
       { label: 'Ernæring',  value: 'ernæring' },
       { label: 'Smågruppe', value: 'small-group' },
     ],
-    theme: {
-      accent:     '#0F766E',
-      headerBg:   '#021A18',
-      titleColor: '#A7F3E8',
-      subColor:   '#5BA89F',
-      badgeBg:    '#CCFBF1',
-      badgeText:  '#0F4F47',
-      barStart:   '#0F766E',
-      barEnd:     '#2DD4BF',
-    },
     accent: 'from-sky-300/60 via-cyan-300/40 to-teal-300/30',
     images: [
       '/bilder/Personlig%20trener/pexels-jonathanborba-3076510.jpg',
@@ -133,16 +91,6 @@ export const CATEGORIES: CategoryConfig[] = [
       { label: 'Langrenn',    value: 'langrenn' },
       { label: 'Klatring',    value: 'klatring' },
     ],
-    theme: {
-      accent:     '#DC2626',
-      headerBg:   '#180808',
-      titleColor: '#FDCACA',
-      subColor:   '#B87070',
-      badgeBg:    '#FEE2E2',
-      badgeText:  '#7F1D1D',
-      barStart:   '#DC2626',
-      barEnd:     '#F87171',
-    },
     accent: 'from-emerald-300/60 via-teal-300/40 to-cyan-300/30',
     images: [
       '/bilder/Idrettslag%20%26%20Sport/pexels-micaasato-1198172.jpg',
