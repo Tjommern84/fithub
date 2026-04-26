@@ -71,18 +71,26 @@ export async function GET(request: Request) {
     const results: CachedLocation[] = body
       .filter((item) => item.lat && item.lon && item.display_name)
       .slice(0, 5)
-      .map((item) => ({
-        label: String(item.display_name),
-        lat: Number(item.lat),
-        lon: Number(item.lon),
-        city: parseCity(item.address as Record<string, unknown>),
-        country: (item.address as Record<string, unknown> | undefined)?.country_code
-          ? String(
-              ((item.address as Record<string, unknown>)?.country_code as string).toUpperCase()
-            )
-          : undefined,
-        source: 'nominatim',
-      }));
+      .map((item) => {
+        const addr = item.address as Record<string, unknown> | undefined;
+        const road = addr?.road as string | undefined;
+        const houseNr = addr?.house_number as string | undefined;
+        const city = parseCity(addr);
+        const streetPart = [road, houseNr].filter(Boolean).join(' ');
+        const shortLabel = streetPart
+          ? `${streetPart}, ${city ?? ''}`.replace(/,\s*$/, '')
+          : (city ?? String(item.display_name));
+        return {
+          label: shortLabel,
+          lat: Number(item.lat),
+          lon: Number(item.lon),
+          city,
+          country: addr?.country_code
+            ? String((addr.country_code as string).toUpperCase())
+            : undefined,
+          source: 'nominatim',
+        };
+      });
     if (results.length > 0) {
       await cacheLocations(results);
     }

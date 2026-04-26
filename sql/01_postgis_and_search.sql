@@ -71,6 +71,7 @@ DROP FUNCTION IF EXISTS search_services(text,double precision,double precision,t
 DROP FUNCTION IF EXISTS search_services(text,double precision,double precision,text,text,text,text,text,text,integer,text);
 DROP FUNCTION IF EXISTS search_services(text,double precision,double precision,text,text,text,text,text,text,integer,text,text);
 DROP FUNCTION IF EXISTS search_services(text,double precision,double precision,text,text,text,text,text,text,integer,text,text,text,text[]);
+DROP FUNCTION IF EXISTS search_services(text,double precision,double precision,text,text,text,text,text,text,integer,text,text,text,text[],double precision);
 
 CREATE OR REPLACE FUNCTION search_services(
   p_city             text,
@@ -86,7 +87,8 @@ CREATE OR REPLACE FUNCTION search_services(
   p_borough          text    DEFAULT NULL,
   p_tag              text    DEFAULT NULL,
   p_main_category    text    DEFAULT NULL,
-  p_tags             text[]  DEFAULT NULL
+  p_tags             text[]  DEFAULT NULL,
+  p_radius_km        double precision DEFAULT NULL
 ) RETURNS TABLE (
   service_id text,
   name text,
@@ -211,12 +213,11 @@ BEGIN
       AND lower(sc.city) = lower(p_city)
     )
     OR (
-      -- Proximity fallback: match city-coverage services within 25 km of user
-      -- This handles bydeler/tettsteder that are not exact city-name matches
+      -- Proximity fallback: uses user's chosen radius, defaulting to 25 km
       sc.type = 'city'
       AND user_point IS NOT NULL
       AND s_loc.base_location IS NOT NULL
-      AND ST_DWithin(s_loc.base_location, user_point, 25 * 1000)
+      AND ST_DWithin(s_loc.base_location, user_point, COALESCE(p_radius_km, 25) * 1000)
     )
     OR (
       -- Only truly online/digital services appear nationwide
@@ -253,6 +254,11 @@ BEGIN
       AND (tag_candidate IS NULL OR tag_candidate = ANY(s.tags))
       AND (p_main_category IS NULL OR s.main_category = p_main_category)
       AND (p_tags IS NULL OR s.tags && p_tags)
+      AND (
+        p_radius_km IS NULL
+        OR mc.distance_km IS NULL
+        OR mc.distance_km <= p_radius_km
+      )
   )
   SELECT
     rs.id,
@@ -360,5 +366,5 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public;
 GRANT EXECUTE ON FUNCTION search_services(
   text, double precision, double precision,
   text, text, text, text, text, text,
-  integer, text, text, text, text[]
+  integer, text, text, text, text[], double precision
 ) TO anon, authenticated;

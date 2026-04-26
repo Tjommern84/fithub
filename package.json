@@ -13,6 +13,9 @@
     "brreg:analyze:city": "tsx scripts/analyze-by-city.ts",
     "brreg:geocode": "tsx scripts/geocode-entities.ts",
     "brreg:geocode:test": "tsx scripts/geocode-entities.ts --limit=10",
+    "brreg:geocode-services": "tsx scripts/geocode-brreg-services.ts --all",
+    "brreg:geocode-services:dry": "tsx scripts/geocode-brreg-services.ts --dry-run --limit=20",
+    "brreg:geocode-services:test": "tsx scripts/geocode-brreg-services.ts --limit=50",
     "brreg:sqlite-import": "tsx scripts/import-sqlite-to-services.ts",
     "brreg:sqlite-import:dry": "tsx scripts/import-sqlite-to-services.ts --dry-run",
     "brreg:export-websites": "tsx scripts/export-websites.ts",
@@ -114,6 +117,7 @@
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
     "postcss": "8.4.39",
+    "sharp": "^0.34.5",
     "tailwindcss": "3.4.6",
     "tsx": "^4.7.0",
     "typescript": "5.5.4"

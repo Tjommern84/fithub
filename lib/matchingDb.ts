@@ -68,6 +68,7 @@ export type SearchParams = {
   tag?: string;
   mainCategory?: string;
   tags?: string[];
+  radiusKm?: number;
   limit?: number;
 };
 
@@ -86,6 +87,7 @@ export async function searchServices(params: SearchParams): Promise<RankedServic
     p_tag: params.tag ?? null,
     p_main_category: params.mainCategory ?? null,
     p_tags: params.tags && params.tags.length > 0 ? params.tags : null,
+    p_radius_km: params.radiusKm ?? null,
     p_limit: params.limit ?? 50,
   };
 

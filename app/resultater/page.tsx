@@ -53,6 +53,7 @@ export default async function ResultsPage({
   const rawType    = typeof searchParams.type     === 'string' ? searchParams.type     : '';
   const rawVenue   = typeof searchParams.venue    === 'string' ? searchParams.venue    : '';
   const rawLocation = typeof searchParams.location === 'string' ? searchParams.location : '';
+  const rawCity    = typeof searchParams.city     === 'string' ? searchParams.city     : '';
   const rawBorough = typeof searchParams.bydel    === 'string'
     ? searchParams.bydel
     : typeof searchParams.borough === 'string' ? searchParams.borough : '';
@@ -110,35 +111,32 @@ export default async function ResultsPage({
 
   let results: RankedService[] = [];
   let fetchError: string | null = null;
-  const requestedBorough = rawBorough ? rawBorough.trim() : undefined;
-  const isOsloSearch = !!locationLabel && normalizeCity(locationLabel) === 'oslo';
 
   if (!isSupabaseConfigured) {
     fetchError = 'Supabase er ikke konfigurert.';
   } else {
     try {
+      const effectiveSort = !rawSort && lat !== undefined && lon !== undefined ? 'nearest' : sort;
+
       const baseParams = {
         type:         serviceType !== 'any' ? serviceType : undefined,
         venue:        venue !== 'either' ? venue : undefined,
-        city:         locationLabel ? locationLabel.split(',')[0].trim().toLowerCase() : undefined,
+        city:         rawCity
+                        ? rawCity.toLowerCase()
+                        : locationLabel
+                        ? locationLabel.split(',')[0].trim().toLowerCase()
+                        : undefined,
         lat,
         lon,
-        sort,
+        sort:         effectiveSort,
         query:        rawQuery || undefined,
         mainCategory: mainCategory ?? undefined,
         tags:         tagsArray.length > 0 ? tagsArray : undefined,
+        radiusKm,
         limit:        50,
       };
 
-      results = await searchServices({
-        ...baseParams,
-        borough: isOsloSearch ? requestedBorough : undefined,
-      });
-
-      // Fallback: if borough filter yields nothing, retry without it
-      if (results.length === 0 && isOsloSearch && requestedBorough) {
-        results = await searchServices(baseParams);
-      }
+      results = await searchServices(baseParams);
     } catch (err) {
       console.error('[ResultsPage] searchServices failed:', err);
       if (err instanceof Error) {
