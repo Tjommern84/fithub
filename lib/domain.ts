@@ -29,7 +29,10 @@ export type ServiceType =
   | 'outdoor'       // Outdoor og naturbasert trening
   | 'sport'         // Sport og prestasjon
   | 'pt'            // Personlig oppfølging og coaching
-  | 'teknologi';    // Teknologi og moderne treningsformer
+  | 'teknologi'     // Teknologi og moderne treningsformer
+  | 'rehab'         // Rehabilitering og klinisk behandling
+  | 'ernæring'      // Kostholdsveiledning og ernæringsrådgivning
+  | 'helse';        // Helse og velvære (solarium, kroppsanalyse, fotterapi)
 export type PriceLevel = 'low' | 'medium' | 'high';
 export type Goal =
   | 'weight_loss'

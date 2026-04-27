@@ -32,6 +32,11 @@ const ACCENT: Record<MainCategory, {
     activeChip: 'bg-emerald-500 border-emerald-500 text-white',
     ring: 'ring-emerald-400',
   },
+  'helse': {
+    gradient: 'from-rose-500/70 via-pink-400/40 to-transparent',
+    activeChip: 'bg-rose-500 border-rose-500 text-white',
+    ring: 'ring-rose-400',
+  },
 };
 
 function firstPart(label: string): string {
@@ -54,23 +59,23 @@ function CategoryCard({
   className?: string;
 }) {
   const [imgIdx, setImgIdx] = useState(0);
-  const [hovering, setHovering] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [prevIdx, setPrevIdx] = useState<number | null>(null);
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartX = useRef<number | null>(null);
   const accent = ACCENT[config.key];
 
-  useEffect(() => {
-    if (hovering && config.images.length > 1) {
-      intervalRef.current = setInterval(() => {
-        setImgIdx((p) => (p + 1) % config.images.length);
-      }, 1800);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [hovering, config.images.length]);
+  const cycleImg = () => {
+    if (config.images.length <= 1) return;
+    if (fadeTimer.current) clearTimeout(fadeTimer.current);
+    setImgIdx((cur) => {
+      const next = (cur + 1) % config.images.length;
+      setPrevIdx(cur);
+      fadeTimer.current = setTimeout(() => setPrevIdx(null), 450);
+      return next;
+    });
+  };
 
-  const cycleImg = (dir: 1 | -1) =>
+  const cycleTouch = (dir: 1 | -1) =>
     setImgIdx((p) => (p + dir + config.images.length) % config.images.length);
 
   return (
@@ -78,13 +83,13 @@ function CategoryCard({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseEnter={cycleImg}
+      onMouseLeave={cycleImg}
       onTouchStart={(e) => { touchStartX.current = e.touches[0]?.clientX ?? null; }}
       onTouchEnd={(e) => {
         if (touchStartX.current == null) return;
         const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
-        if (Math.abs(delta) > 30) cycleImg(delta < 0 ? 1 : -1);
+        if (Math.abs(delta) > 30) cycleTouch(delta < 0 ? 1 : -1);
         touchStartX.current = null;
       }}
       className={[
@@ -100,10 +105,24 @@ function CategoryCard({
         className,
       ].join(' ')}
     >
-      {/* Background image */}
+      {/* Background images — crossfade on hover-cycle */}
+      {prevIdx !== null && (
+        <div
+          className="absolute inset-0 bg-cover bg-center will-change-[opacity,transform] group-hover:scale-105"
+          style={{
+            backgroundImage: `url('${config.images[prevIdx]}')`,
+            transition: 'opacity 0.4s ease, transform 0.7s ease',
+            opacity: 0,
+          }}
+        />
+      )}
       <div
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-700 will-change-transform group-hover:scale-105"
-        style={{ backgroundImage: `url('${config.images[imgIdx]}')` }}
+        className="absolute inset-0 bg-cover bg-center will-change-[opacity,transform] group-hover:scale-105"
+        style={{
+          backgroundImage: `url('${config.images[imgIdx]}')`,
+          transition: 'opacity 0.4s ease, transform 0.7s ease',
+          opacity: 1,
+        }}
       />
       {/* Gradient overlays */}
       <div className={`absolute inset-0 bg-gradient-to-br ${accent.gradient}`} />
@@ -285,16 +304,21 @@ export default function CategoryGrid() {
           </p>
         </div>
 
-        {/* ── 2×2 category grid ─────────────────────────────────────── */}
+        {/* ── Category grid ─────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4 sm:gap-5">
-          {CATEGORIES.map((cat) => (
+          {CATEGORIES.map((cat, idx) => (
             <CategoryCard
               key={cat.key}
               config={cat}
               selected={false}
               disabled={!location}
               onClick={() => handleCardClick(cat.key)}
-              className="h-56 sm:h-64 lg:h-72"
+              className={[
+                'h-56 sm:h-64 lg:h-72',
+                idx === CATEGORIES.length - 1 && CATEGORIES.length % 2 !== 0
+                  ? 'col-span-2'
+                  : '',
+              ].filter(Boolean).join(' ')}
             />
           ))}
         </div>

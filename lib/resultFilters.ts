@@ -26,6 +26,9 @@ export const typeLabels: Record<ServiceTypePref, string> = {
   sport: 'Sport & Prestasjon',
   pt: 'Personlig trener',
   teknologi: 'Digital trening',
+  rehab: 'Rehabilitering',
+  ernæring: 'Ernæring',
+  helse: 'Helse & velvære',
   any: 'Alle',
 };
 
@@ -65,6 +68,9 @@ export const serviceTypeLabels: Record<ServiceTypePref, string> = {
   sport: 'Sport & Prestasjon',
   pt: 'Personlig trener',
   teknologi: 'Digital trening',
+  rehab: 'Rehabilitering',
+  ernæring: 'Ernæring',
+  helse: 'Helse & velvære',
   any: 'Alle',
 };
 

@@ -88,7 +88,17 @@
     "osm:push": "tsx scripts/push-osm-facilities.ts",
     "osm:push:dry": "tsx scripts/push-osm-facilities.ts --dry-run",
     "anlegg:import": "tsx scripts/import-anleggsregisteret.ts",
-    "anlegg:import:dry": "tsx scripts/import-anleggsregisteret.ts --dry-run"
+    "anlegg:import:dry": "tsx scripts/import-anleggsregisteret.ts --dry-run",
+    "feel24:fetch": "tsx scripts/fetch-feel24.ts",
+    "feel24:fetch:dry": "tsx scripts/fetch-feel24.ts --dry-run",
+    "sporty:fetch": "tsx scripts/fetch-sporty.ts",
+    "sporty:fetch:dry": "tsx scripts/fetch-sporty.ts --dry-run",
+    "impulse:fetch": "tsx scripts/fetch-impulse.ts",
+    "impulse:fetch:dry": "tsx scripts/fetch-impulse.ts --dry-run",
+    "mova:fetch": "tsx scripts/fetch-mova.ts",
+    "mova:fetch:dry": "tsx scripts/fetch-mova.ts --dry-run",
+    "3t:fetch": "tsx scripts/fetch-3t.ts",
+    "3t:fetch:dry": "tsx scripts/fetch-3t.ts --dry-run"
   },
   "dependencies": {
     "@react-leaflet/core": "^2.1.0",

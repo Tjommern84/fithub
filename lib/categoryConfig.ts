@@ -2,7 +2,8 @@ export type MainCategory =
   | 'trene-selv'
   | 'trene-sammen'
   | 'oppfolging'
-  | 'aktivitet-sport';
+  | 'aktivitet-sport'
+  | 'helse';
 
 export type TagOption = { label: string; value: string };
 
@@ -118,6 +119,36 @@ export const CATEGORIES: CategoryConfig[] = [
     serviceTypes: ['pt', 'spesialisert', 'livsstil'],
   },
   {
+    key: 'helse',
+    label: 'Helse & behandling',
+    description: 'Fysioterapi, ernæring, rehab og velvære',
+    tags: [
+      { label: 'Fysioterapi',   value: 'fysioterapi' },
+      { label: 'Rehab',         value: 'rehab' },
+      { label: 'Ernæring',      value: 'ernæring' },
+      { label: 'Kiropraktikk',  value: 'kiropraktikk' },
+      { label: 'Solarium',      value: 'solarium' },
+      { label: 'Kroppsanalyse', value: 'kroppsanalyse' },
+    ],
+    theme: {
+      accent:     '#BE185D',
+      headerBg:   '#1A0510',
+      titleColor: '#FBCFE8',
+      subColor:   '#C084A0',
+      badgeBg:    '#FCE7F3',
+      badgeText:  '#831843',
+      barStart:   '#BE185D',
+      barEnd:     '#F472B6',
+    },
+    accent: 'from-rose-300/60 via-pink-300/40 to-fuchsia-300/30',
+    images: [
+      '/bilder/Klinisk & Rehab/pexels-kampus-6111589.jpg',
+      '/bilder/Livsstil & Helse/pexels-karola-g-5714341.jpg',
+      '/bilder/Klinisk & Rehab/pexels-karola-g-4506214.jpg',
+    ],
+    serviceTypes: ['rehab', 'ernæring', 'helse', 'spesialisert'],
+  },
+  {
     key: 'aktivitet-sport',
     label: 'Aktivitet & sport',
     description: 'Idrettslag, friluft og naturbasert aktivitet',
@@ -158,6 +189,7 @@ export const CATEGORY_LABELS: Record<MainCategory, string> = {
   'trene-sammen': 'Trene sammen',
   oppfolging: 'Oppfølging & coaching',
   'aktivitet-sport': 'Aktivitet & sport',
+  helse: 'Helse & behandling',
 };
 
 export function getCategoryConfig(key: string): CategoryConfig | undefined {
@@ -169,7 +201,8 @@ export function parseMainCategory(value: string): MainCategory | null {
     value === 'trene-selv' ||
     value === 'trene-sammen' ||
     value === 'oppfolging' ||
-    value === 'aktivitet-sport'
+    value === 'aktivitet-sport' ||
+    value === 'helse'
   ) {
     return value;
   }

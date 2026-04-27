@@ -21,6 +21,9 @@ const typeLabels: Record<Service['type'], string> = {
   spesialisert: 'Klinisk & Rehab',
   livsstil: 'Livsstil & Helse',
   teknologi: 'Digital trening',
+  rehab: 'Rehabilitering',
+  ernæring: 'Ernæring',
+  helse: 'Helse & velvære',
 };
 
 const SERVICE_SELECT =

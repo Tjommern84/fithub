@@ -252,7 +252,22 @@ BEGIN
         OR s.search_text % normalized_query
       )
       AND (tag_candidate IS NULL OR tag_candidate = ANY(s.tags))
-      AND (p_main_category IS NULL OR s.main_category = p_main_category)
+      AND (
+        p_main_category IS NULL
+        OR s.main_category = p_main_category
+        OR EXISTS (
+          SELECT 1 FROM service_types st
+          WHERE st.service_id = s.id
+            AND st.type = ANY(CASE p_main_category
+              WHEN 'trene-selv'      THEN ARRAY['styrke','kondisjon','teknologi']
+              WHEN 'trene-sammen'    THEN ARRAY['gruppe','yoga','mindbody','outdoor']
+              WHEN 'oppfolging'      THEN ARRAY['pt','spesialisert','livsstil']
+              WHEN 'helse'           THEN ARRAY['rehab','ernæring','helse','spesialisert']
+              WHEN 'aktivitet-sport' THEN ARRAY['sport']
+              ELSE ARRAY[]::text[]
+            END)
+        )
+      )
       AND (p_tags IS NULL OR s.tags && p_tags)
       AND (
         p_radius_km IS NULL
