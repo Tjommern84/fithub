@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getClientIp, isRateLimited } from '../../../lib/rateLimit';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +24,6 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const SERPER_API_KEY = process.env.SERPER_API_KEY ?? '';
 
 const COOLDOWN_HOURS = 24;
-const DELAY_MS = 400; // ms between Serper requests (keep total under Vercel 10s limit)
 
 // ── Search queries to run per city ────────────────────────────────────────────
 
@@ -40,16 +40,27 @@ interface SearchSpec {
 
 const SEARCH_SPECS: SearchSpec[] = [
   // PT-er
-  { term: 'personlig-trener',   query: 'personlig trener',  type: 'pt', mainCategory: 'oppfolging', tags: ['pt'],           goals: ['strength','weight_loss','start'], venues: ['home','gym'],    idPrefix: 'bg_pt' },
-  { term: 'personal-trainer',   query: 'personal trainer',  type: 'pt', mainCategory: 'oppfolging', tags: ['pt'],           goals: ['strength','weight_loss','start'], venues: ['home','gym'],    idPrefix: 'bg_pt' },
+  { term: 'personlig-trener',   query: 'personlig trener',  type: 'pt',      mainCategory: 'oppfolging',      tags: ['pt'],                        goals: ['strength','weight_loss','start'], venues: ['home','gym'],    idPrefix: 'bg_pt' },
+  { term: 'personal-trainer',   query: 'personal trainer',  type: 'pt',      mainCategory: 'oppfolging',      tags: ['pt'],                        goals: ['strength','weight_loss','start'], venues: ['home','gym'],    idPrefix: 'bg_pt' },
   // Ernæring
-  { term: 'ernæringsfysiolog',  query: 'ernæringsfysiolog', type: 'livsstil', mainCategory: 'oppfolging', tags: ['ernæring'], goals: ['weight_loss','start'],           venues: ['home','gym'],    idPrefix: 'bg_ern' },
-  { term: 'kostholdsrådgiver',  query: 'kostholdsrådgiver', type: 'livsstil', mainCategory: 'oppfolging', tags: ['ernæring','kosthold'], goals: ['weight_loss'], venues: ['home','gym'],    idPrefix: 'bg_ern' },
+  { term: 'ernæringsfysiolog',  query: 'ernæringsfysiolog', type: 'livsstil', mainCategory: 'oppfolging',     tags: ['ernæring'],                  goals: ['weight_loss','start'],            venues: ['home','gym'],    idPrefix: 'bg_ern' },
+  { term: 'kostholdsrådgiver',  query: 'kostholdsrådgiver', type: 'livsstil', mainCategory: 'oppfolging',     tags: ['ernæring','kosthold'],        goals: ['weight_loss'],                    venues: ['home','gym'],    idPrefix: 'bg_ern' },
+  // Treningssenter (trene-selv)
+  { term: 'treningssenter',     query: 'treningssenter',    type: 'styrke',  mainCategory: 'trene-selv',      tags: ['treningssenter','styrke'],    goals: ['strength','weight_loss','start'], venues: ['gym'],          idPrefix: 'bg_gym' },
+  { term: 'yogastudio',         query: 'yogastudio',        type: 'yoga',    mainCategory: 'trene-sammen',    tags: ['yoga','bevegelighet'],        goals: ['mobility','start'],               venues: ['gym'],          idPrefix: 'bg_yoga' },
+  // Gruppe og løping (trene-sammen)
+  { term: 'gruppetimer',        query: 'gruppetimer fitness', type: 'gruppe', mainCategory: 'trene-sammen',   tags: ['gruppetimer','fitness'],      goals: ['weight_loss','start','endurance'],venues: ['gym'],          idPrefix: 'bg_grp' },
+  { term: 'løpegruppe',         query: 'løpegruppe',        type: 'outdoor', mainCategory: 'trene-sammen',    tags: ['løping','outdoor'],           goals: ['endurance','start'],              venues: ['outdoor'],      idPrefix: 'bg_run' },
   // Idrettslag
-  { term: 'fotball',            query: 'fotballklubb',      type: 'sport', mainCategory: 'aktivitet-sport', tags: ['fotball','idrettslag'],    goals: ['kondisjon','start'], venues: ['outdoor','gym'], idPrefix: 'bg_sc' },
-  { term: 'håndball',           query: 'håndballklubb',     type: 'sport', mainCategory: 'aktivitet-sport', tags: ['håndball','idrettslag'],   goals: ['kondisjon','start'], venues: ['gym'],           idPrefix: 'bg_sc' },
-  { term: 'svømmeklubb',        query: 'svømmeklubb',       type: 'sport', mainCategory: 'aktivitet-sport', tags: ['svømming','idrettslag'],   goals: ['kondisjon'],        venues: ['gym'],           idPrefix: 'bg_sc' },
-  { term: 'idrettslag',         query: 'idrettslag',        type: 'sport', mainCategory: 'aktivitet-sport', tags: ['idrettslag'],             goals: ['kondisjon','start'], venues: ['outdoor','gym'], idPrefix: 'bg_sc' },
+  { term: 'fotball',            query: 'fotballklubb',      type: 'sport',   mainCategory: 'aktivitet-sport', tags: ['fotball','idrettslag'],       goals: ['kondisjon','start'],              venues: ['outdoor','gym'], idPrefix: 'bg_sc' },
+  { term: 'håndball',           query: 'håndballklubb',     type: 'sport',   mainCategory: 'aktivitet-sport', tags: ['håndball','idrettslag'],      goals: ['kondisjon','start'],              venues: ['gym'],           idPrefix: 'bg_sc' },
+  { term: 'svømmeklubb',        query: 'svømmeklubb',       type: 'sport',   mainCategory: 'aktivitet-sport', tags: ['svømming','idrettslag'],      goals: ['kondisjon'],                      venues: ['gym'],           idPrefix: 'bg_sc' },
+  { term: 'idrettslag',         query: 'idrettslag',        type: 'sport',   mainCategory: 'aktivitet-sport', tags: ['idrettslag'],                 goals: ['kondisjon','start'],              venues: ['outdoor','gym'], idPrefix: 'bg_sc' },
+  // Helse
+  { term: 'fysioterapeut',      query: 'fysioterapeut',     type: 'spesialisert', mainCategory: 'helse',      tags: ['fysioterapi','rehab'],         goals: ['rehab','mobility'],               venues: ['gym'],           idPrefix: 'bg_helse' },
+  { term: 'kiropraktor',        query: 'kiropraktor',       type: 'spesialisert', mainCategory: 'helse',      tags: ['kiropraktikk','rehab'],        goals: ['rehab','mobility'],               venues: ['gym'],           idPrefix: 'bg_helse' },
+  { term: 'naprapat',           query: 'naprapat',          type: 'spesialisert', mainCategory: 'helse',      tags: ['rehab','muskel'],              goals: ['rehab','mobility'],               venues: ['gym'],           idPrefix: 'bg_helse' },
+  { term: 'helsestudio',        query: 'helsestudio velvære', type: 'helse',  mainCategory: 'helse',          tags: ['velvære','helse'],             goals: ['mobility','start'],               venues: ['gym'],           idPrefix: 'bg_helse' },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -69,15 +80,11 @@ async function serperSearch(query: string): Promise<SerperPlace[]> {
   const res = await fetch('https://google.serper.dev/places', {
     method: 'POST',
     headers: { 'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ q: query, gl: 'no', hl: 'no' }),
+    body: JSON.stringify({ q: query, gl: 'no', hl: 'no', num: 5 }),
   });
   if (!res.ok) return [];
   const data = await res.json() as { places?: SerperPlace[] };
   return data.places ?? [];
-}
-
-function sleep(ms: number) {
-  return new Promise(r => setTimeout(r, ms));
 }
 
 function makeId(prefix: string, term: string, address: string): string {
@@ -108,6 +115,11 @@ function extractCity(address: string): string | null {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+  if (isRateLimited(`refresh-city:${ip}`, 5, 60_000)) {
+    return NextResponse.json({ status: 'error', reason: 'rate limited' }, { status: 429 });
+  }
+
   if (!SUPABASE_URL || !SERPER_API_KEY) {
     return NextResponse.json({ status: 'error', reason: 'not configured' }, { status: 500 });
   }
@@ -145,16 +157,12 @@ export async function POST(req: NextRequest) {
     { onConflict: 'city' },
   );
 
-  // ── Run searches (max 3 to stay within Vercel 10s function limit) ────────
-  let added = 0;
-  const specsToRun = SEARCH_SPECS.slice(0, 3);
+  // ── Run all specs in parallel (5 results each keeps total DB ops within Vercel 10s limit) ──
+  const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
 
-  for (let i = 0; i < specsToRun.length; i++) {
-    const spec = SEARCH_SPECS[i];
-    const cityDisplay = city.charAt(0).toUpperCase() + city.slice(1);
-    const fullQuery = `${spec.query} ${cityDisplay}`;
-
-    const places = await serperSearch(fullQuery);
+  const runSpec = async (spec: SearchSpec): Promise<number> => {
+    const places = await serperSearch(`${spec.query} ${cityDisplay}`);
+    let count = 0;
 
     for (const place of places) {
       if (!isNorwegianAddress(place.address)) continue;
@@ -188,27 +196,29 @@ export async function POST(req: NextRequest) {
         .upsert(serviceRow, { onConflict: 'id', ignoreDuplicates: true });
 
       if (!error) {
-        // Set base_location if coords available
         if (place.latitude && place.longitude) {
           await supabase
             .from('services')
             .update({ base_location: `SRID=4326;POINT(${place.longitude} ${place.latitude})` })
             .eq('id', id);
         }
-
-        // Insert coverage (best-effort, ignore duplicates)
         try {
           await supabase
             .from('service_coverage')
             .insert({ service_id: id, type: 'city', city: effectiveCity });
         } catch { /* ignore duplicate */ }
-
-        added++;
+        count++;
       }
     }
 
-    if (i < specsToRun.length - 1) await sleep(DELAY_MS);
-  }
+    return count;
+  };
+
+  const results = await Promise.allSettled(SEARCH_SPECS.map(runSpec));
+  const added = results.reduce(
+    (sum, r) => sum + (r.status === 'fulfilled' ? r.value : 0),
+    0
+  );
 
   return NextResponse.json({ status: 'refreshed', city, added });
 }

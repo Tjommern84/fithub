@@ -7,6 +7,8 @@ import { searchServices } from '../../lib/matchingDb';
 import { parseServiceType, parseSort, parseVenue } from '../../lib/resultFilters';
 import { parseMainCategory, CATEGORY_LABELS, getCategoryConfig } from '../../lib/categoryConfig';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
+import { fetchGroupSessions } from '../../lib/groupSessions';
+import type { GroupSession } from '../../lib/groupSessions';
 import ResultsView from './ResultsView';
 
 export const dynamic = 'force-dynamic';
@@ -34,11 +36,25 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const rawCat = typeof searchParams.cat === 'string' ? searchParams.cat : '';
   const rawType = typeof searchParams.type === 'string' ? searchParams.type : '';
+  const rawLocation = typeof searchParams.location === 'string' ? searchParams.location : '';
   const mainCat = parseMainCategory(rawCat);
   const label = mainCat
     ? CATEGORY_LABELS[mainCat]
     : TYPE_LABELS[rawType] ?? 'Finn treningstilbud';
-  return { title: `${label} – FitHub` };
+  const city = rawLocation ? rawLocation.split(',')[0].trim() : null;
+  const title = city ? `${label} i ${city}` : label;
+  const description = city
+    ? `Finn ${label.toLowerCase()} nær ${city}. Sammenlign treningssteder, personlige trenere og treningsgrupper på FitHub.`
+    : `Finn ${label.toLowerCase()} over hele Norge. Sammenlign treningssteder, personlige trenere og treningsgrupper på FitHub.`;
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+    },
+  };
 }
 
 export default async function ResultsPage({
@@ -61,6 +77,8 @@ export default async function ResultsPage({
   const rawQuery  = typeof searchParams.q      === 'string' ? searchParams.q      : '';
   const rawRadius = typeof searchParams.radius === 'string' ? parseInt(searchParams.radius, 10) : NaN;
   const radiusKm  = !Number.isNaN(rawRadius) && rawRadius > 0 ? rawRadius : 10;
+  const rawPage   = typeof searchParams.page === 'string' ? parseInt(searchParams.page, 10) : NaN;
+  const page      = !Number.isNaN(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const mainCategory = parseMainCategory(rawCat);
   const serviceType  = parseServiceType(rawType);
@@ -110,7 +128,14 @@ export default async function ResultsPage({
   // ── Fetch results ─────────────────────────────────────────────────────────
 
   let results: RankedService[] = [];
+  let groupSessions: GroupSession[] = [];
   let fetchError: string | null = null;
+
+  const resolvedCity = rawCity
+    ? rawCity.toLowerCase()
+    : locationLabel
+    ? locationLabel.split(',')[0].trim().toLowerCase()
+    : undefined;
 
   if (!isSupabaseConfigured) {
     fetchError = 'Supabase er ikke konfigurert.';
@@ -121,11 +146,7 @@ export default async function ResultsPage({
       const baseParams = {
         type:         serviceType !== 'any' ? serviceType : undefined,
         venue:        venue !== 'either' ? venue : undefined,
-        city:         rawCity
-                        ? rawCity.toLowerCase()
-                        : locationLabel
-                        ? locationLabel.split(',')[0].trim().toLowerCase()
-                        : undefined,
+        city:         resolvedCity,
         lat,
         lon,
         sort:         effectiveSort,
@@ -134,9 +155,17 @@ export default async function ResultsPage({
         tags:         tagsArray.length > 0 ? tagsArray : undefined,
         radiusKm,
         limit:        50,
+        page,
       };
 
-      results = await searchServices(baseParams);
+      const fetches: [Promise<RankedService[]>, Promise<GroupSession[]>] = [
+        searchServices(baseParams),
+        mainCategory === 'trene-sammen'
+          ? fetchGroupSessions({ lat, lon, city: resolvedCity, radiusKm, tags: tagsArray.length > 0 ? tagsArray : undefined })
+          : Promise.resolve([]),
+      ];
+
+      [results, groupSessions] = await Promise.all(fetches);
     } catch (err) {
       console.error('[ResultsPage] searchServices failed:', err);
       if (err instanceof Error) {
@@ -206,11 +235,14 @@ export default async function ResultsPage({
         ) : (
           <ResultsView
             results={results}
+            groupSessions={groupSessions}
             categoryLabel={categoryLabel}
             locationLabel={locationLabel}
             centerLat={lat}
             centerLon={lon}
             radiusKm={radiusKm}
+            currentPage={page}
+            pageSize={50}
           />
         )}
       </div>

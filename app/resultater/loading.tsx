@@ -2,20 +2,25 @@
 import { useSearchParams } from 'next/navigation';
 import { parseMainCategory, getCategoryConfig } from '../../lib/categoryConfig';
 
-function CardSkeleton() {
+function CardSkeleton({ withImage }: { withImage?: boolean }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm animate-pulse">
-      <div className="flex justify-between gap-4">
-        <div className="flex-1 space-y-2 min-w-0">
-          <div className="h-5 bg-slate-200 rounded w-3/4" />
-          <div className="h-4 bg-slate-100 rounded w-full" />
-          <div className="h-4 bg-slate-100 rounded w-2/3" />
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm animate-pulse overflow-hidden">
+      {withImage && <div className="h-28 w-full bg-slate-200" />}
+      <div className="p-5">
+        <div className="flex justify-between gap-4">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="h-7 w-7 rounded-full bg-slate-200 shrink-0" />
+            <div className="flex-1 space-y-2">
+              <div className="h-5 bg-slate-200 rounded w-3/4" />
+              <div className="h-4 bg-slate-100 rounded w-full" />
+            </div>
+          </div>
+          <div className="h-4 bg-slate-100 rounded w-20 shrink-0 mt-1" />
         </div>
-        <div className="h-4 bg-slate-100 rounded w-20 shrink-0 mt-1" />
-      </div>
-      <div className="mt-3 flex gap-2">
-        <div className="h-6 bg-slate-100 rounded-full w-28" />
-        <div className="h-6 bg-slate-100 rounded-full w-16" />
+        <div className="mt-3 flex gap-2">
+          <div className="h-6 bg-slate-100 rounded-full w-28" />
+          <div className="h-6 bg-slate-100 rounded-full w-16" />
+        </div>
       </div>
     </div>
   );
@@ -63,10 +68,10 @@ export default function Loading() {
           ))}
         </div>
 
-        {/* Card skeletons */}
+        {/* Card skeletons — alternating with/without image to match real distribution */}
         <div className="space-y-4">
           {[0, 1, 2, 3, 4, 5].map((i) => (
-            <CardSkeleton key={i} />
+            <CardSkeleton key={i} withImage={i % 3 === 0} />
           ))}
         </div>
       </div>

@@ -26,6 +26,8 @@ type SearchServicesRow = {
   orgnr: string | null;
   lat: number | null;
   lon: number | null;
+  cover_image_url: string | null;
+  logo_image_url: string | null;
 };
 
 const mapRowToRankedService = (row: SearchServicesRow): RankedService => ({
@@ -47,6 +49,8 @@ const mapRowToRankedService = (row: SearchServicesRow): RankedService => ({
     email: row.email ?? null,
     website: row.website ?? null,
     orgnr: row.orgnr ?? null,
+    cover_image_url: row.cover_image_url ?? null,
+    logo_image_url: row.logo_image_url ?? null,
   },
   distanceKm: row.distance_km ?? undefined,
   score: row.score,
@@ -70,10 +74,13 @@ export type SearchParams = {
   tags?: string[];
   radiusKm?: number;
   limit?: number;
+  page?: number;
 };
 
 export async function searchServices(params: SearchParams): Promise<RankedService[]> {
   if (!supabase) return [];
+  const pageSize = params.limit ?? 50;
+  const offset = ((params.page ?? 1) - 1) * pageSize;
   const baseArgs = {
     p_city: params.city ?? null,
     p_lat: params.lat ?? null,
@@ -88,7 +95,10 @@ export async function searchServices(params: SearchParams): Promise<RankedServic
     p_main_category: params.mainCategory ?? null,
     p_tags: params.tags && params.tags.length > 0 ? params.tags : null,
     p_radius_km: params.radiusKm ?? null,
-    p_limit: params.limit ?? 50,
+    p_limit: pageSize,
+    // Only include p_offset when > 0 so the old function signature still works
+    // until sql/13_add_offset_pagination.sql has been run in Supabase.
+    ...(offset > 0 ? { p_offset: offset } : {}),
   };
 
   let data: unknown[] | null = null;

@@ -37,6 +37,10 @@ type ServiceRow = {
   cover_image_url?: string | null;
   logo_image_url?: string | null;
   cancellation_hours?: number | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  address?: string | null;
 };
 
 const getSupabase = () => {
@@ -86,7 +90,7 @@ export async function getOwnedService(
   const { data } = await supabase
     .from('services')
     .select(
-      'id, name, description, price_level, goals, venues, coverage, tags, owner_user_id, cover_image_url, logo_image_url, cancellation_hours'
+      'id, name, description, price_level, goals, venues, coverage, tags, owner_user_id, cover_image_url, logo_image_url, cancellation_hours, phone, email, website, address'
     )
     .eq('id', serviceId)
     .maybeSingle();
@@ -125,6 +129,11 @@ export async function updateServiceProfile(
     .split(',')
     .map((tag) => tag.trim())
     .filter((tag) => tag.length > 0);
+
+  const phone = String(formData.get('phone') ?? '').trim() || null;
+  const email = String(formData.get('email') ?? '').trim() || null;
+  const website = String(formData.get('website') ?? '').trim() || null;
+  const address = String(formData.get('address') ?? '').trim() || null;
 
   const cancellationHoursRaw = String(formData.get('cancellation_hours') ?? '24');
   const cancellationHours = Number(cancellationHoursRaw);
@@ -216,6 +225,10 @@ export async function updateServiceProfile(
       coverage,
       tags,
       cancellation_hours: cancellationHours,
+      phone,
+      email,
+      website,
+      address,
     })
     .eq('id', serviceId);
 
@@ -580,6 +593,97 @@ export async function createCheckoutSession(
   }
 
   return { ok: true, message: 'Redirect', url: session.url };
+}
+
+export type ServiceAnalytics = {
+  views7d: number;
+  views30d: number;
+};
+
+export async function getServiceAnalytics(
+  accessToken: string,
+  serviceId: string
+): Promise<ServiceAnalytics> {
+  const supabase = getSupabase();
+  if (!supabase || !accessToken || !serviceId) return { views7d: 0, views30d: 0 };
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+  if (userError || !userData.user) return { views7d: 0, views30d: 0 };
+
+  const now = new Date();
+  const ago7  = new Date(now.getTime() - 7  * 86_400_000).toISOString();
+  const ago30 = new Date(now.getTime() - 30 * 86_400_000).toISOString();
+
+  const [{ count: v7 }, { count: v30 }] = await Promise.all([
+    supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('type', 'profile_viewed')
+      .eq('service_id', serviceId)
+      .gte('created_at', ago7),
+    supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('type', 'profile_viewed')
+      .eq('service_id', serviceId)
+      .gte('created_at', ago30),
+  ]);
+
+  return { views7d: v7 ?? 0, views30d: v30 ?? 0 };
+}
+
+export type WeeklyView = { week: string; views: number };
+
+export async function getProfileViewTrend(
+  accessToken: string,
+  serviceId: string,
+  weeks = 8
+): Promise<WeeklyView[]> {
+  const supabase = getSupabase();
+  if (!supabase || !accessToken || !serviceId) return [];
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+  if (userError || !userData.user) return [];
+
+  const cutoff = new Date(Date.now() - weeks * 7 * 86_400_000).toISOString();
+
+  const { data } = await supabase
+    .from('events')
+    .select('created_at')
+    .eq('type', 'profile_viewed')
+    .eq('service_id', serviceId)
+    .gte('created_at', cutoff)
+    .order('created_at', { ascending: true }) as { data: Array<{ created_at: string }> | null };
+
+  if (!data) return [];
+
+  // Aggregate by ISO week (YYYY-Www)
+  const counts: Record<string, number> = {};
+  for (const row of data) {
+    const d = new Date(row.created_at);
+    const weekKey = getISOWeekLabel(d);
+    counts[weekKey] = (counts[weekKey] ?? 0) + 1;
+  }
+
+  // Fill all weeks in range (including empty ones)
+  const result: WeeklyView[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 7 * 86_400_000);
+    const weekKey = getISOWeekLabel(d);
+    if (!result.find((r) => r.week === weekKey)) {
+      result.push({ week: weekKey, views: counts[weekKey] ?? 0 });
+    }
+  }
+  return result;
+}
+
+function getISOWeekLabel(d: Date): string {
+  const jan4 = new Date(d.getFullYear(), 0, 4);
+  const startOfWeek1 = new Date(jan4);
+  startOfWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+  const diff = d.getTime() - startOfWeek1.getTime();
+  const week = Math.floor(diff / (7 * 86_400_000)) + 1;
+  return `${d.getFullYear()}-V${String(week).padStart(2, '0')}`;
 }
 
 export async function getLeadsForOwnedService(

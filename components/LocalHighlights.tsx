@@ -1,19 +1,7 @@
 ﻿import Link from 'next/link';
 import type { Goal } from '../lib/domain';
+import { cityDisplayNames } from '../lib/matching';
 import { Card } from './ui/Card';
-
-const cityDisplayNames: Record<string, string> = {
-  oslo: 'Oslo',
-  bærum: 'Bærum',
-  drammen: 'Drammen',
-  lillestrøm: 'Lillestrøm',
-  asker: 'Asker',
-  bergen: 'Bergen',
-  trondheim: 'Trondheim',
-  stavanger: 'Stavanger',
-  kristiansand: 'Kristiansand',
-  tromsø: 'Tromsø',
-};
 
 const goalLabels: Record<Goal, string> = {
   weight_loss: 'Vektnedgang',

@@ -58,6 +58,10 @@ type ServiceFormState = {
   coverage_radius: string;
   coverage_cities: string;
   coverage_region: 'norway' | 'nordic';
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
 };
 
 const sortAvailabilitySlots = (slots: AvailabilitySlot[]) =>
@@ -101,6 +105,10 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
     coverage_radius: '',
     coverage_cities: '',
     coverage_region: 'norway',
+    phone: '',
+    email: '',
+    website: '',
+    address: '',
   });
 
   const [saveState, formAction] = useFormState(updateServiceProfile, {
@@ -127,6 +135,22 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
   });
 
   const selectedCoverage = useMemo(() => formState.coverage_type, [formState.coverage_type]);
+
+  const completeness = useMemo(() => {
+    const checks = [
+      { key: 'description', label: 'Skriv en beskrivelse på minst 50 tegn', ok: formState.description.trim().length >= 50 },
+      { key: 'phone',       label: 'Legg til telefonnummer',                 ok: !!formState.phone.trim() },
+      { key: 'email',       label: 'Legg til e-postadresse',                 ok: !!formState.email.trim() },
+      { key: 'website',     label: 'Legg til nettside',                      ok: !!formState.website.trim() },
+      { key: 'address',     label: 'Legg til adresse',                       ok: !!formState.address.trim() },
+      { key: 'cover',       label: 'Last opp coverbilde',                    ok: !!coverPreview },
+      { key: 'logo',        label: 'Last opp logo',                          ok: !!logoPreview },
+      { key: 'tags',        label: 'Legg til tags',                          ok: !!formState.tags.trim() },
+      { key: 'goals',       label: 'Velg minst ett mål',                     ok: formState.goals.length > 0 },
+    ];
+    const score = Math.round((checks.filter((c) => c.ok).length / checks.length) * 100);
+    return { score, missing: checks.filter((c) => !c.ok).map((c) => c.label) };
+  }, [formState, coverPreview, logoPreview]);
   const toSlotTime = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return '';
@@ -242,6 +266,10 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
         coverage_radius: rule && rule.type === 'radius' ? String(rule.radius_km) : '',
         coverage_cities: rule && rule.type === 'cities' ? rule.cities.join(', ') : '',
         coverage_region: rule && rule.type === 'region' ? rule.region : 'norway',
+        phone: data.phone ?? '',
+        email: data.email ?? '',
+        website: data.website ?? '',
+        address: data.address ?? '',
       });
       setCoverPreview(data.cover_image_url ?? null);
       setLogoPreview(data.logo_image_url ?? null);
@@ -576,6 +604,98 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
             />
           </div>
 
+          {/* Kontaktinfo */}
+          <div className="border-t border-slate-100 pt-6">
+            <p className="text-sm font-semibold text-slate-700 mb-4">Kontaktinformasjon</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <label htmlFor="phone" className={label}>Telefon</label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="12345678"
+                  value={formState.phone}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, phone: event.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor="contact_email" className={label}>E-post (offentlig)</label>
+                <Input
+                  id="contact_email"
+                  name="email"
+                  type="email"
+                  placeholder="post@dinbedrift.no"
+                  value={formState.email}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, email: event.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor="website" className={label}>Nettside</label>
+                <Input
+                  id="website"
+                  name="website"
+                  type="url"
+                  placeholder="https://dinbedrift.no"
+                  value={formState.website}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, website: event.target.value }))}
+                />
+              </div>
+              <div className="grid gap-2">
+                <label htmlFor="address" className={label}>Adresse</label>
+                <Input
+                  id="address"
+                  name="address"
+                  placeholder="Storgata 1, Oslo"
+                  value={formState.address}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, address: event.target.value }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Profilkomplettering */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-semibold text-slate-700">Profilkomplettering</p>
+              <span
+                className={`text-sm font-bold ${
+                  completeness.score >= 80
+                    ? 'text-emerald-600'
+                    : completeness.score >= 50
+                    ? 'text-amber-600'
+                    : 'text-rose-600'
+                }`}
+              >
+                {completeness.score}%
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  completeness.score >= 80
+                    ? 'bg-emerald-500'
+                    : completeness.score >= 50
+                    ? 'bg-amber-400'
+                    : 'bg-rose-500'
+                }`}
+                style={{ width: `${completeness.score}%` }}
+              />
+            </div>
+            {completeness.missing.length > 0 ? (
+              <ul className="mt-3 space-y-1">
+                {completeness.missing.map((tip) => (
+                  <li key={tip} className="flex items-start gap-2 text-xs text-slate-600">
+                    <span className="mt-0.5 shrink-0 text-slate-400">○</span>
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs font-medium text-emerald-600">Profilen er komplett!</p>
+            )}
+          </div>
+
           <div className="flex flex-wrap items-center gap-4">
             <SubmitButton />
             {saveState.ok && (
@@ -588,6 +708,66 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
             )}
           </div>
         </form>
+
+        {/* Bilder */}
+        <div className="mt-10 border-t border-slate-100 pt-8">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500 mb-4">
+            Bilder
+          </h2>
+          <div className="grid gap-6 sm:grid-cols-2">
+            {/* Cover */}
+            <div className="space-y-3">
+              <p className={label}>Coverbilde (1200×630 px anbefalt)</p>
+              {coverPreview && (
+                <img
+                  src={coverPreview}
+                  alt="Cover"
+                  className="w-full h-32 object-cover rounded-lg border border-slate-200"
+                />
+              )}
+              {coverStatus && (
+                <p className="text-xs text-slate-500">{coverStatus}</p>
+              )}
+              <label className="block">
+                <span className="sr-only">Last opp coverbilde</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={coverUploading || isPending}
+                  onChange={handleUpload('cover')}
+                  className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-slate-100 file:px-4 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                />
+              </label>
+              {coverUploading && <p className="text-xs text-slate-400">Laster opp ...</p>}
+            </div>
+
+            {/* Logo */}
+            <div className="space-y-3">
+              <p className={label}>Logo (kvadratisk, maks 5 MB)</p>
+              {logoPreview && (
+                <img
+                  src={logoPreview}
+                  alt="Logo"
+                  className="w-20 h-20 object-cover rounded-full border border-slate-200"
+                />
+              )}
+              {logoStatus && (
+                <p className="text-xs text-slate-500">{logoStatus}</p>
+              )}
+              <label className="block">
+                <span className="sr-only">Last opp logo</span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={logoUploading || isPending}
+                  onChange={handleUpload('logo')}
+                  className="block w-full text-sm text-slate-500 file:mr-3 file:rounded-full file:border-0 file:bg-slate-100 file:px-4 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200 cursor-pointer"
+                />
+              </label>
+              {logoUploading && <p className="text-xs text-slate-400">Laster opp ...</p>}
+            </div>
+          </div>
+        </div>
 
         <div className="mt-10 border-t border-slate-100 pt-8">
           <div className="flex items-start justify-between gap-4">

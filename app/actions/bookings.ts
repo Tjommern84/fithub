@@ -9,6 +9,7 @@ import {
   bookingConfirmedEmail,
 } from '../../lib/emailTemplates';
 import { logError } from '../../lib/errorLogger';
+import { generateIcsContent } from '../../lib/ics';
 import { wrapServerAction } from '../../lib/actionWrapper';
 import { getServiceSupabase } from '../../lib/serviceSupabase';
 import { shouldSendEmail } from '../../lib/notificationPreferences';
@@ -132,7 +133,17 @@ const sendBookingConfirmedEmail = async (
     serviceName,
     scheduledAt: formattedTime,
   });
-  await sendEmail({ to: userEmail, ...content });
+  const icsContent = generateIcsContent(
+    `Booking med ${serviceName}`,
+    scheduledAt,
+    60
+  );
+  const icsBase64 = Buffer.from(icsContent).toString('base64');
+  await sendEmail({
+    to: userEmail,
+    ...content,
+    attachments: [{ filename: 'booking.ics', content: icsBase64 }],
+  });
 };
 
 const sendBookingCancelledEmail = async (

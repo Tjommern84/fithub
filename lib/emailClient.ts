@@ -16,6 +16,7 @@ export async function sendEmail(params: {
   subject: string;
   body: string;
   replyTo?: string;
+  attachments?: { filename: string; content: string }[];
 }): Promise<{ ok: boolean; message?: string }> {
   if (!resendKey || !resendFrom) {
     return { ok: false, message: 'Mangler e-postkonfigurasjon.' };
@@ -33,6 +34,7 @@ export async function sendEmail(params: {
       subject: params.subject,
       text: params.body,
       ...(params.replyTo ? { replyTo: params.replyTo } : {}),
+      ...(params.attachments ? { attachments: params.attachments } : {}),
     });
 
     if (error) {

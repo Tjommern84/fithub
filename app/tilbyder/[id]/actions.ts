@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendEmail, isEmailConfigured } from '../../../lib/emailClient';
 import { logError } from '../../../lib/errorLogger';
 import { wrapServerAction } from '../../../lib/actionWrapper';
-import { leadCreatedEmail } from '../../../lib/emailTemplates';
+import { leadCreatedEmail, serviceClaimedEmail } from '../../../lib/emailTemplates';
 import { hasRequiredConsents } from '../../../lib/consents';
 import { shouldSendEmail } from '../../../lib/notificationPreferences';
 import { trackEvent } from '../../../lib/analytics';
@@ -564,9 +564,105 @@ const submitReviewHandler = async (
     return { ok: false, message: 'Kunne ikke lagre vurderingen.' };
   }
 
+  // Recalculate and persist rating_avg / rating_count so search ranking stays current
+  const serviceClient = getServiceSupabase();
+  if (serviceClient) {
+    const { data: allRatings } = await serviceClient
+      .from('reviews')
+      .select('rating')
+      .eq('service_id', leadData.service_id);
+
+    if (allRatings && allRatings.length > 0) {
+      const count = allRatings.length;
+      const avg = allRatings.reduce((s: number, r: { rating: number }) => s + r.rating, 0) / count;
+      await serviceClient
+        .from('services')
+        .update({ rating_avg: Math.round(avg * 10) / 10, rating_count: count })
+        .eq('id', leadData.service_id);
+    }
+  }
+
   await invalidateServiceCaches(leadData.service_id);
 
   return { ok: true, message: 'Takk for vurderingen!' };
 };
 
 export const submitReview = wrapServerAction('review_submit', submitReviewHandler);
+
+export type ClaimWithOrgnrStatus = {
+  ok: boolean;
+  status: 'claimed' | 'already_claimed' | 'not_found' | 'unauthorized' | 'orgnr_mismatch' | 'no_orgnr';
+  message: string;
+};
+
+export async function claimServiceWithOrgnr(
+  _prevState: ClaimWithOrgnrStatus,
+  formData: FormData
+): Promise<ClaimWithOrgnrStatus> {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return { ok: false, status: 'unauthorized', message: 'Mangler Supabase-konfigurasjon.' };
+  }
+
+  const accessToken = String(formData.get('accessToken') ?? '');
+  const serviceId = String(formData.get('serviceId') ?? '');
+  const orgnrInput = String(formData.get('orgnr') ?? '').replace(/\s|-/g, '');
+
+  if (!accessToken) {
+    return { ok: false, status: 'unauthorized', message: 'Du må være innlogget.' };
+  }
+  if (!serviceId) {
+    return { ok: false, status: 'not_found', message: 'Ugyldig tjeneste-ID.' };
+  }
+  if (!/^\d{9}$/.test(orgnrInput)) {
+    return { ok: false, status: 'orgnr_mismatch', message: 'Org.nr. må være 9 siffer.' };
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
+  if (userError || !userData.user) {
+    return { ok: false, status: 'unauthorized', message: 'Innloggingen er ikke gyldig lenger.' };
+  }
+
+  const { data: svc } = await supabase
+    .from('services')
+    .select('id, name, orgnr, owner_user_id, email')
+    .eq('id', serviceId)
+    .maybeSingle();
+
+  if (!svc) {
+    return { ok: false, status: 'not_found', message: 'Fant ikke tjenesten.' };
+  }
+  if (svc.owner_user_id) {
+    return { ok: false, status: 'already_claimed', message: 'Denne profilen er allerede verifisert av en annen bruker.' };
+  }
+  if (!svc.orgnr) {
+    return { ok: false, status: 'no_orgnr', message: 'Denne tjenesten har ikke et registrert org.nr. Kontakt oss for manuell verifisering.' };
+  }
+
+  const storedOrgnr = String(svc.orgnr).replace(/\s|-/g, '');
+  if (storedOrgnr !== orgnrInput) {
+    return { ok: false, status: 'orgnr_mismatch', message: 'Org.nr. stemmer ikke med det registrerte for denne tjenesten.' };
+  }
+
+  const { data: updated } = await supabase
+    .from('services')
+    .update({ owner_user_id: userData.user.id })
+    .eq('id', serviceId)
+    .is('owner_user_id', null)
+    .select('id');
+
+  if (!updated || updated.length === 0) {
+    return { ok: false, status: 'already_claimed', message: 'Profilen ble nettopp verifisert av noen andre.' };
+  }
+
+  if (ENABLE_EMAILS && isEmailConfigured && svc.email) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fithub.no';
+    const emailContent = serviceClaimedEmail({
+      serviceName: svc.name,
+      dashboardUrl: `${appUrl}/dashboard`,
+    });
+    await sendEmail({ to: svc.email, subject: emailContent.subject, body: emailContent.body });
+  }
+
+  return { ok: true, status: 'claimed', message: `${svc.name} er nå verifisert og koblet til kontoen din.` };
+}

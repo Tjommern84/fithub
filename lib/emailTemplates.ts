@@ -108,3 +108,8 @@ export const feedbackNotificationEmail = ({ message }: { message: string }) => (
   subject: 'Ny tilbakemelding – fithub.no',
   body: `Ny tilbakemelding mottatt på fithub.no:\n\n${message}\n`,
 });
+
+export const serviceClaimedEmail = ({ serviceName, dashboardUrl }: { serviceName: string; dashboardUrl: string }) => ({
+  subject: `Profil bekreftet – ${serviceName} på fithub.no`,
+  body: `Hei,\n\nProfilen din for ${serviceName} er nå verifisert og aktivert på fithub.no.\n\nDu kan nå redigere informasjon, legge til bilder og motta forespørsler fra brukere.\n\nGå til dashbordet her:\n${dashboardUrl}\n\nMed vennlig hilsen,\nFitHub\n`,
+});

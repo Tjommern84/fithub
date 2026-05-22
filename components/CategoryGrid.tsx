@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES, type CategoryConfig, type MainCategory } from '../lib/categoryConfig';
 import { useLocation } from '../lib/locationContext';
@@ -51,12 +52,14 @@ function CategoryCard({
   disabled,
   onClick,
   className = '',
+  priority = false,
 }: {
   config: CategoryConfig;
   selected: boolean;
   disabled: boolean;
   onClick: () => void;
   className?: string;
+  priority?: boolean;
 }) {
   const [imgIdx, setImgIdx] = useState(0);
   const [prevIdx, setPrevIdx] = useState<number | null>(null);
@@ -107,22 +110,23 @@ function CategoryCard({
     >
       {/* Background images — crossfade on hover-cycle */}
       {prevIdx !== null && (
-        <div
-          className="absolute inset-0 bg-cover bg-center will-change-[opacity,transform] group-hover:scale-105"
-          style={{
-            backgroundImage: `url('${config.images[prevIdx]}')`,
-            transition: 'opacity 0.4s ease, transform 0.7s ease',
-            opacity: 0,
-          }}
+        <Image
+          src={config.images[prevIdx]}
+          alt=""
+          fill
+          sizes="(max-width: 640px) 50vw, 576px"
+          className="object-cover will-change-[opacity,transform] group-hover:scale-105"
+          style={{ transition: 'opacity 0.4s ease, transform 0.7s ease', opacity: 0 }}
         />
       )}
-      <div
-        className="absolute inset-0 bg-cover bg-center will-change-[opacity,transform] group-hover:scale-105"
-        style={{
-          backgroundImage: `url('${config.images[imgIdx]}')`,
-          transition: 'opacity 0.4s ease, transform 0.7s ease',
-          opacity: 1,
-        }}
+      <Image
+        src={config.images[imgIdx]}
+        alt=""
+        fill
+        sizes="(max-width: 640px) 50vw, 576px"
+        className="object-cover will-change-[opacity,transform] group-hover:scale-105"
+        style={{ transition: 'opacity 0.4s ease, transform 0.7s ease', opacity: 1 }}
+        priority={priority && imgIdx === 0}
       />
       {/* Gradient overlays */}
       <div className={`absolute inset-0 bg-gradient-to-br ${accent.gradient}`} />
@@ -150,7 +154,7 @@ function CategoryCard({
           <h2 className="font-heading text-lg font-bold leading-tight text-white sm:text-xl">
             {config.label}
           </h2>
-          <p className="mt-1 line-clamp-1 text-sm font-light text-white/75">
+          <p className="mt-1 line-clamp-1 text-sm font-light text-white/85">
             {config.description}
           </p>
         </div>
@@ -183,6 +187,23 @@ export default function CategoryGrid() {
   const { location, setLocation } = useLocation();
   const [geoPrompt, setGeoPrompt] = useState<'hidden' | 'asking' | 'visible'>('hidden');
   const [geoLoading, setGeoLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    const p = new URLSearchParams();
+    p.set('q', q);
+    if (location) {
+      p.set('location', location.label);
+      if (location.city) p.set('city', location.city);
+      p.set('lat', String(location.lat));
+      p.set('lon', String(location.lon));
+      if (location.radius !== null) p.set('radius', String(location.radius));
+    }
+    router.push(`/resultater?${p.toString()}`);
+  }, [searchQuery, location, router]);
 
   // Show geolocation prompt on first load if no saved location and not dismissed
   useEffect(() => {
@@ -293,7 +314,7 @@ export default function CategoryGrid() {
       <div className="mx-auto max-w-6xl px-4 py-8">
 
         {/* Heading */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="font-heading text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
             Finn lokale treningsmuligheter
           </h1>
@@ -304,6 +325,26 @@ export default function CategoryGrid() {
           </p>
         </div>
 
+        {/* Search bar */}
+        <form className="mb-8" onSubmit={handleSearch}>
+          <div className="relative max-w-lg">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Søk på treningssted, PT, yoga…"
+              className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-4 pr-28 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-400"
+            />
+            <button
+              type="submit"
+              disabled={!searchQuery.trim()}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:opacity-40"
+            >
+              Søk
+            </button>
+          </div>
+        </form>
+
         {/* ── Category grid ─────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4 sm:gap-5">
           {CATEGORIES.map((cat, idx) => (
@@ -313,6 +354,7 @@ export default function CategoryGrid() {
               selected={false}
               disabled={!location}
               onClick={() => handleCardClick(cat.key)}
+              priority={idx < 4}
               className={[
                 'h-56 sm:h-64 lg:h-72',
                 idx === CATEGORIES.length - 1 && CATEGORIES.length % 2 !== 0

@@ -1,11 +1,20 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabaseClient';
-import { services } from '../../../lib/providers';
-import { getLeadsForOwnedService } from '../actions';
+import {
+  getLeadsForOwnedService,
+  getOwnedServices,
+  getServiceAnalytics,
+  getProfileViewTrend,
+  type ServiceAnalytics,
+  type WeeklyView,
+} from '../actions';
 import { ButtonLink } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { container } from '../../../lib/ui';
@@ -23,10 +32,9 @@ export default function ServiceLeadsPage({ params }: { params: { serviceId: stri
   const [session, setSession] = useState<Session | null>(null);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
-
-  const serviceName = useMemo(() => {
-    return services.find((service) => service.id === params.serviceId)?.name ?? 'Tjeneste';
-  }, [params.serviceId]);
+  const [serviceName, setServiceName] = useState('Laster ...');
+  const [analytics, setAnalytics] = useState<ServiceAnalytics | null>(null);
+  const [trend, setTrend] = useState<WeeklyView[]>([]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -45,13 +53,23 @@ export default function ServiceLeadsPage({ params }: { params: { serviceId: stri
 
   useEffect(() => {
     if (!session?.access_token) return;
-    const loadLeads = async () => {
+    const loadData = async () => {
       setStatus('loading');
-      const data = await getLeadsForOwnedService(session.access_token, params.serviceId);
+      const [data, ownedList, analyticsData, trendData] = await Promise.all([
+        getLeadsForOwnedService(session.access_token, params.serviceId),
+        getOwnedServices(session.access_token),
+        getServiceAnalytics(session.access_token, params.serviceId),
+        getProfileViewTrend(session.access_token, params.serviceId),
+      ]);
       setLeads(data);
+      setAnalytics(analyticsData);
+      setTrend(trendData);
+      const found = ownedList.find((s) => s.id === params.serviceId);
+      if (found?.name) setServiceName(found.name);
+      else setServiceName('Tjeneste');
       setStatus('idle');
     };
-    loadLeads();
+    loadData();
   }, [session, params.serviceId]);
 
   if (!isSupabaseConfigured) {
@@ -88,6 +106,48 @@ export default function ServiceLeadsPage({ params }: { params: { serviceId: stri
         Tilbake til dashboard
       </Link>
       <h1 className="mt-4 text-3xl font-semibold text-slate-900">{serviceName}</h1>
+
+      {analytics && (
+        <div className="mt-4 flex flex-wrap gap-4">
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center">
+            <p className="text-2xl font-bold text-slate-900">{analytics.views7d}</p>
+            <p className="mt-0.5 text-xs text-slate-400">Profilvisninger siste 7 dager</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center">
+            <p className="text-2xl font-bold text-slate-900">{analytics.views30d}</p>
+            <p className="mt-0.5 text-xs text-slate-400">Profilvisninger siste 30 dager</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-center">
+            <p className="text-2xl font-bold text-slate-900">{leads.length}</p>
+            <p className="mt-0.5 text-xs text-slate-400">Forespørsler totalt</p>
+          </div>
+        </div>
+      )}
+
+      {trend.length > 0 && (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+          <p className="mb-3 text-sm font-medium text-slate-700">Profilvisninger per uke (siste 8 uker)</p>
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart data={trend} margin={{ top: 4, right: 8, left: -24, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis dataKey="week" tick={{ fontSize: 10 }} tickLine={false} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                labelStyle={{ fontWeight: 600 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="views"
+                stroke="#e11d48"
+                strokeWidth={2}
+                dot={{ r: 3, fill: '#e11d48' }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {status === 'loading' && (
         <div className="mt-6 text-sm text-slate-500">Laster leads ...</div>

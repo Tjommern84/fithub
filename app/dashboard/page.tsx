@@ -1,11 +1,10 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useFormState, useFormStatus } from 'react-dom';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient';
-import { services } from '../../lib/providers';
 import { createCheckoutSession, getLeadsForOwnedService, getOwnedServices } from './actions';
 import { ENABLE_PAYMENTS, ENABLE_PILOT_MODE } from '../../lib/featureFlags';
 import { Button, ButtonLink } from '../../components/ui/Button';
@@ -39,10 +38,6 @@ export default function DashboardPage() {
   const [providerBookings, setProviderBookings] = useState<BookingItem[]>([]);
   const [bookingsStatus, setBookingsStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
-  const fallbackMap = useMemo(() => {
-    return new Map(services.map((service) => [service.id, service.name]));
-  }, []);
-
   useEffect(() => {
     if (!supabase) return;
     let isMounted = true;
@@ -68,7 +63,7 @@ export default function DashboardPage() {
           const leads = await getLeadsForOwnedService(session.access_token, service.id);
           return {
             id: service.id,
-            name: service.name || fallbackMap.get(service.id) || 'Ukjent tjeneste',
+            name: service.name || 'Ukjent tjeneste',
             leadCount: leads.length,
             subscription_status: service.subscription_status ?? 'inactive',
           };
@@ -78,7 +73,7 @@ export default function DashboardPage() {
       setStatus('idle');
     };
     loadServices();
-  }, [session, fallbackMap]);
+  }, [session]);
 
   useEffect(() => {
     if (!session?.access_token) return;
@@ -203,6 +198,12 @@ export default function DashboardPage() {
                   className="text-sm font-semibold text-slate-900"
                 >
                   Rediger profil
+                </Link>
+                <Link
+                  href={`/tilbyder/${service.id}`}
+                  className="text-sm font-medium text-slate-500 hover:text-slate-700"
+                >
+                  Se offentlig profil →
                 </Link>
                 {service.subscription_status !== 'active' && ENABLE_PAYMENTS && (
                   <SubscribeButton

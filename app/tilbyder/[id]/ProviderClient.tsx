@@ -10,14 +10,13 @@ import { useFormState } from 'react-dom';
 import type { Session } from '@supabase/supabase-js';
 import type { Goal, Service } from '../../../lib/domain';
 import { AvailabilitySlot, formatSlotLabel } from '../../../lib/booking';
-import { cityCoordinates, normalizeCity } from '../../../lib/matching';
+import { cityCoordinates, cityDisplayNames, normalizeCity } from '../../../lib/matching';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabaseClient';
 import { trackEvent } from '../../../lib/analytics';
 import { getMissingConsents, type ConsentType } from '../../../lib/consents';
 import { ENABLE_PAYMENTS, ENABLE_PILOT_MODE, ENABLE_REVIEWS } from '../../../lib/featureFlags';
 import {
   canReview,
-  claimService,
   createLead,
   getReviewSummary,
   getReviews,
@@ -50,18 +49,6 @@ const goalSlugs: Record<Goal, string> = {
   start: 'nybegynner',
 };
 
-const cityDisplayNames: Record<string, string> = {
-  oslo: 'Oslo',
-  bærum: 'Bærum',
-  drammen: 'Drammen',
-  lillestrøm: 'Lillestrøm',
-  asker: 'Asker',
-  bergen: 'Bergen',
-  trondheim: 'Trondheim',
-  stavanger: 'Stavanger',
-  kristiansand: 'Kristiansand',
-  tromsø: 'Tromsø',
-};
 
 const typeLabels: Record<Service['type'], string> = {
   styrke: 'Treningssenter',
@@ -142,9 +129,10 @@ type ReviewItem = {
 type ProviderClientProps = {
   params: { id: string };
   service: Service | null;
+  relatedServices?: Service[];
 };
 
-export default function ProviderClient({ params, service: initialService }: ProviderClientProps) {
+export default function ProviderClient({ params, service: initialService, relatedServices = [] }: ProviderClientProps) {
   const searchParams = useSearchParams();
   const queryString = searchParams.toString();
   const backHref = queryString ? `/resultater?${queryString}` : '/resultater';
@@ -187,9 +175,6 @@ export default function ProviderClient({ params, service: initialService }: Prov
   }>({ canReview: false });
   const [missingConsents, setMissingConsents] = useState<ConsentType[]>([]);
   const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
-  const claimInitialState = { ok: false, status: 'not_found', message: '' } as const;
-  const [claimState, claimAction] = useFormState(claimService, claimInitialState);
-
   const initialState: LeadActionState = { ok: false, message: '' };
   const [state, formAction] = useFormState(createLead, initialState);
   const [isRequestModalOpen, setRequestModalOpen] = useState(false);
@@ -328,7 +313,7 @@ export default function ProviderClient({ params, service: initialService }: Prov
       setOwnerUserId(owner);
     };
     loadOwner();
-  }, [service, claimState.ok]);
+  }, [service]);
 
   useEffect(() => {
     if (!service?.id) {
@@ -499,9 +484,19 @@ export default function ProviderClient({ params, service: initialService }: Prov
             <div className="text-sm text-slate-600 space-y-1">
               <div>Prisnivå: {priceLabels[service.price_level]}</div>
               <div>
-                {reviewSummary.count > 0
-                  ? `Rating: ${reviewSummary.avg.toFixed(1)} (${reviewSummary.count})`
-                  : 'Ingen vurderinger enda'}
+                {reviewSummary.count > 0 ? (
+                  <span className="flex items-center gap-1">
+                    <span className="text-amber-400">
+                      {'★'.repeat(Math.round(reviewSummary.avg))}
+                      <span className="text-slate-300">{'★'.repeat(5 - Math.round(reviewSummary.avg))}</span>
+                    </span>
+                    <span className="text-slate-600">
+                      {reviewSummary.avg.toFixed(1)} ({reviewSummary.count} vurderinger)
+                    </span>
+                  </span>
+                ) : (
+                  'Ingen vurderinger enda'
+                )}
               </div>
             </div>
           </div>
@@ -555,21 +550,23 @@ export default function ProviderClient({ params, service: initialService }: Prov
             </section>
           )}
 
-          <section className="mt-8">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Dekning
-            </h2>
-            <ul className="mt-3 space-y-2 text-sm text-slate-700">
-              {coverageLines.map((line, index) => (
-                <li
-                  key={`${service.id}-coverage-${index}`}
-                  className="rounded-lg bg-slate-50 px-3 py-2"
-                >
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </section>
+          {coverageLines.length > 0 && (
+            <section className="mt-8">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Dekning
+              </h2>
+              <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                {coverageLines.map((line, index) => (
+                  <li
+                    key={`${service.id}-coverage-${index}`}
+                    className="rounded-lg bg-slate-50 px-3 py-2"
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="mt-8">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
@@ -583,39 +580,68 @@ export default function ProviderClient({ params, service: initialService }: Prov
               ))}
             </div>
           </section>
+
+          {(service.phone || service.email || service.website || service.address) && (
+            <section className="mt-8">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Kontakt
+              </h2>
+              <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                {service.address && (
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                    {service.address}
+                  </li>
+                )}
+                {service.phone && (
+                  <li className="flex items-center gap-2">
+                    <span className="shrink-0 text-slate-400">📞</span>
+                    <a href={`tel:+47${service.phone}`} className="hover:underline">
+                      {service.phone}
+                    </a>
+                  </li>
+                )}
+                {service.email && (
+                  <li className="flex items-center gap-2">
+                    <span className="shrink-0 text-slate-400">✉️</span>
+                    <a href={`mailto:${service.email}`} className="hover:underline">
+                      {service.email}
+                    </a>
+                  </li>
+                )}
+                {service.website && (
+                  <li className="flex items-center gap-2">
+                    <span className="shrink-0 text-slate-400">🌐</span>
+                    <a
+                      href={service.website.startsWith('http') ? service.website : `https://${service.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      {service.website.replace(/^https?:\/\//, '')}
+                    </a>
+                  </li>
+                )}
+              </ul>
+            </section>
+          )}
         </div>
 
         {!ownerUserId && (
           <Card className="mt-8 bg-slate-50">
             <h2 className="text-sm font-semibold text-slate-900">
-              Er du ansvarlig for denne tjenesten?
+              Er du ansvarlig for denne virksomheten?
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Claim profilen for å få tilgang til leads og dashboard.
+              Verifiser profilen med org.nr. for å få tilgang til leads og dashbordet.
             </p>
-            {claimState.message && (
-              <div
-                className={`mt-3 rounded-lg px-4 py-2 text-sm ${
-                  claimState.ok
-                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border border-amber-200 bg-amber-50 text-amber-700'
-                }`}
-              >
-                {claimState.message}
-              </div>
-            )}
-            <form className="mt-4" action={claimAction}>
-              <input type="hidden" name="serviceId" value={service.id} />
-              <input type="hidden" name="accessToken" value={session?.access_token ?? ''} />
-              <Button type="submit" disabled={!session || !isSupabaseConfigured}>
-                Claim tjeneste
-              </Button>
-            </form>
-            {claimState.ok && (
-              <ButtonLink href="/dashboard" variant="secondary" className="mt-4">
-                Gå til dashboard
-              </ButtonLink>
-            )}
+            <ButtonLink
+              href={`/tilbyder/krev/${service.id}`}
+              variant="secondary"
+              className="mt-4"
+            >
+              Verifiser profil
+            </ButtonLink>
           </Card>
         )}
       </Card>
@@ -750,6 +776,42 @@ export default function ProviderClient({ params, service: initialService }: Prov
           </form>
         )}
       </Card>
+      {relatedServices.length > 0 && (
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold text-slate-900">Lignende tilbydere</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {relatedServices.map((related) => (
+              <Link
+                key={related.id}
+                href={`/tilbyder/${related.id}`}
+                className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
+              >
+                {related.logo_image_url ? (
+                  <Image
+                    src={related.logo_image_url}
+                    alt={related.name}
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 shrink-0 rounded-full border border-slate-200 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold uppercase text-slate-500">
+                    {related.name.charAt(0)}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900 leading-snug">{related.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">{typeLabels[related.type]}</p>
+                  {related.description && (
+                    <p className="mt-1 text-xs text-slate-600 line-clamp-2">{related.description}</p>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       <div className="sm:hidden">
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur backdrop-saturate-150">
           <div className="flex items-center justify-between gap-3">

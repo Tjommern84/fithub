@@ -28,8 +28,22 @@ const dmSans = DM_Sans({
 });
 
 export const metadata = {
-  title: 'FitHub',
+  metadataBase: new URL('https://fithub.no'),
+  title: {
+    default: 'FitHub',
+    template: '%s – FitHub',
+  },
   description: 'Finn trening som passer deg – lokale tilbydere over hele Norge',
+  alternates: {
+    canonical: 'https://fithub.no',
+    languages: { 'nb-NO': 'https://fithub.no' },
+  },
+  openGraph: {
+    siteName: 'FitHub',
+    locale: 'nb_NO',
+    type: 'website',
+    images: [{ url: '/og-default.svg', width: 1200, height: 630, alt: 'FitHub' }],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

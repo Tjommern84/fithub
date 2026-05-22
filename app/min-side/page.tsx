@@ -1,17 +1,17 @@
 ﻿'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient';
-import { services } from '../../lib/providers';
 import {
   getNotificationPreferences,
   updateNotificationPreferences,
   type NotificationPreferences,
 } from '../../lib/notificationPreferences';
+import { savePhone, getProfileVerification } from '../../lib/groupSessions';
 import { exportMyData, getMyData, requestAccountDeletion } from '../../lib/gdpr';
 import {
   createOrganization,
@@ -83,6 +83,9 @@ type OrgActionStatus = 'idle' | 'loading';
 export default function MinSidePage() {
   const [session, setSession] = useState<Session | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [phone, setPhone] = useState('');
+  const [phoneVerifiedAt, setPhoneVerifiedAt] = useState<string | null>(null);
+  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle');
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
   const [prefStatus, setPrefStatus] = useState<'idle' | 'loading' | 'saving' | 'saved' | 'error'>(
@@ -110,15 +113,22 @@ export default function MinSidePage() {
     'idle'
   );
 
-  const serviceMap = useMemo(() => {
-    return new Map(services.map((service) => [service.id, service.name]));
-  }, []);
+  const [serviceMap, setServiceMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (!supabase) return;
     let isMounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (isMounted) setSession(data.session);
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (isMounted) {
+        setSession(data.session);
+        if (data.session?.user?.id) {
+          const pv = await getProfileVerification(data.session.user.id);
+          if (pv && isMounted) {
+            setPhone(pv.phone ?? '');
+            setPhoneVerifiedAt(pv.phone_verified_at);
+          }
+        }
+      }
     });
     const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -144,7 +154,19 @@ export default function MinSidePage() {
         setStatus('error');
         return;
       }
-      setLeads(data ?? []);
+      const leadsData = data ?? [];
+      setLeads(leadsData);
+
+      const ids = [...new Set(leadsData.map((l) => l.service_id))];
+      if (ids.length > 0) {
+        const { data: svcData } = await client
+          .from('services')
+          .select('id, name')
+          .in('id', ids);
+        if (svcData) {
+          setServiceMap(new Map((svcData as { id: string; name: string }[]).map((s) => [s.id, s.name])));
+        }
+      }
       setStatus('idle');
     };
     loadLeads();
@@ -321,6 +343,18 @@ export default function MinSidePage() {
     setDeleteMessage(result.message);
     if (supabase) {
       await supabase.auth.signOut();
+    }
+  };
+
+  const handleSavePhone = async () => {
+    if (!session?.user) return;
+    setPhoneStatus('loading');
+    try {
+      await savePhone(session.user.id, phone.trim());
+      setPhoneVerifiedAt(new Date().toISOString());
+      setPhoneStatus('saved');
+    } catch {
+      setPhoneStatus('error');
     }
   };
 
@@ -705,6 +739,53 @@ export default function MinSidePage() {
       </section>
 
       <section className="mt-6 space-y-6">
+        {/* ── Telefonverifisering ─────────────────────────────────────── */}
+        <Card id="telefon" className="p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Telefonnummer</h2>
+              <p className="mt-1 text-sm text-slate-600">
+                Påkrevd for å opprette arrangementer og gruppetimer.
+              </p>
+            </div>
+            {phoneVerifiedAt && (
+              <span className="text-xs font-semibold text-blue-600">✓ Verifisert</span>
+            )}
+          </div>
+          <div className="mt-4 flex items-end gap-3">
+            <div className="flex-1">
+              <label className="text-xs text-slate-500 block mb-1" htmlFor="phone-input">
+                Mobilnummer
+              </label>
+              <Input
+                id="phone-input"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+47 123 45 678"
+              />
+            </div>
+            <Button
+              type="button"
+              onClick={handleSavePhone}
+              disabled={phoneStatus === 'loading' || !phone.trim()}
+            >
+              {phoneStatus === 'loading' ? 'Lagrer ...' : phoneStatus === 'saved' ? 'Lagret ✓' : 'Lagre'}
+            </Button>
+          </div>
+          {phoneStatus === 'error' && (
+            <p className="mt-2 text-xs text-rose-600">Kunne ikke lagre. Prøv igjen.</p>
+          )}
+          <div className="mt-4 flex gap-2">
+            <ButtonLink href="/arrangementer/nytt" variant="secondary" className="text-xs px-3">
+              Opprett arrangement
+            </ButtonLink>
+            <ButtonLink href="/min-side/arrangementer" variant="secondary" className="text-xs px-3">
+              Mine arrangementer
+            </ButtonLink>
+          </div>
+        </Card>
+
         <Card className="mt-10 p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>

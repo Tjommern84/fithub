@@ -1,37 +1,14 @@
 import { NextResponse } from 'next/server';
 import { cacheLocations, queryLocationsByLabel, type CachedLocation } from '../../../lib/locations';
-
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 30;
-const rateLimitStore = new Map<string, number[]>();
-
-const getClientIp = (request: Request) => {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0]?.trim() ?? 'unknown';
-  }
-  return request.headers.get('cf-connecting-ip') ?? 'unknown';
-};
-
-const isRateLimited = (ip: string) => {
-  const now = Date.now();
-  const timestamps = rateLimitStore.get(ip) ?? [];
-  const windowed = timestamps.filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
-  if (windowed.length >= RATE_LIMIT_MAX) {
-    return true;
-  }
-  windowed.push(now);
-  rateLimitStore.set(ip, windowed);
-  return false;
-};
+import { getClientIp, isRateLimited } from '../../../lib/rateLimit';
 
 const parseCity = (address?: Record<string, unknown>) => {
   if (!address) return undefined;
   return (
     (address.city as string | undefined) ??
     (address.town as string | undefined) ??
-    (address.village as string | undefined) ??
-    (address.municipality as string | undefined)
+    (address.municipality as string | undefined) ??
+    (address.village as string | undefined)
   );
 };
 
@@ -44,7 +21,7 @@ export async function GET(request: Request) {
     return NextResponse.json([]);
   }
 
-  if (isRateLimited(ip)) {
+  if (isRateLimited(`geocode:${ip}`, 30, 60_000)) {
     return NextResponse.json([], { status: 429 });
   }
 

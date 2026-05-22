@@ -41,20 +41,24 @@ export async function POST(request: NextRequest) {
   if (!accessToken) {
     return NextResponse.json({ ok: false, message: 'Manglende tilgang.' }, { status: 401 });
   }
-  const { action } = await request.json();
-  if (action === 'update-service') {
-    const { serviceId, isFeatured, featuredRank, categories } = await request.json();
+  const body = await request.json() as { action?: string; serviceId?: string; isFeatured?: boolean; featuredRank?: number; categories?: string[]; id?: string; name?: string; description?: string };
+  if (body.action === 'update-service') {
+    if (!body.serviceId || body.isFeatured == null || body.featuredRank == null || !Array.isArray(body.categories)) {
+      return NextResponse.json({ ok: false, message: 'Mangler felt.' }, { status: 400 });
+    }
     const result = await adminUpdateServiceCuration(accessToken, {
-      serviceId,
-      isFeatured,
-      featuredRank,
-      categories,
+      serviceId: body.serviceId,
+      isFeatured: body.isFeatured,
+      featuredRank: body.featuredRank,
+      categories: body.categories,
     });
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   }
-  if (action === 'upsert-category') {
-    const { id, name, description } = await request.json();
-    const result = await adminUpsertCategory(accessToken, { id, name, description });
+  if (body.action === 'upsert-category') {
+    if (!body.name) {
+      return NextResponse.json({ ok: false, message: 'Navn er påkrevd.' }, { status: 400 });
+    }
+    const result = await adminUpsertCategory(accessToken, { id: body.id, name: body.name, description: body.description });
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   }
   return NextResponse.json({ ok: false, message: 'Ugyldig handling.' }, { status: 400 });

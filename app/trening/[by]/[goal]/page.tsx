@@ -1,30 +1,19 @@
 ﻿import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { services } from '../../../../lib/providers';
-import { cityCoordinates, getRankedServices, normalizeCity } from '../../../../lib/matching';
+import { cityCoordinates, cityDisplayNames, normalizeCity } from '../../../../lib/matching';
+import { searchServices } from '../../../../lib/matchingDb';
 import type { Goal } from '../../../../lib/domain';
+import type { RankedService } from '../../../../lib/matching';
 import LocalHighlights from '../../../../components/LocalHighlights';
 import { ButtonLink } from '../../../../components/ui/Button';
 import { Card } from '../../../../components/ui/Card';
 import { Chip } from '../../../../components/ui/Chip';
 import { container } from '../../../../lib/ui';
-import { findLocationByCity } from '../../../../lib/locations';
 
 export const revalidate = 3600;
 
-const cityDisplayNames: Record<string, string> = {
-  oslo: 'Oslo',
-  bærum: 'Bærum',
-  drammen: 'Drammen',
-  lillestrøm: 'Lillestrøm',
-  asker: 'Asker',
-  bergen: 'Bergen',
-  trondheim: 'Trondheim',
-  stavanger: 'Stavanger',
-  kristiansand: 'Kristiansand',
-  tromsø: 'Tromsø',
-};
 
 type GoalContent = {
   slug: string;
@@ -110,13 +99,29 @@ const goalSlugMap = Object.fromEntries(
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 const ogImageUrl = `${appUrl}/og-default.svg`;
 
-const getCityDisplayName = (cityKey: string) => cityDisplayNames[cityKey] ?? cityKey;
+const getCityDisplayName = (cityKey: string) =>
+  cityDisplayNames[cityKey] ?? cityKey.charAt(0).toUpperCase() + cityKey.slice(1);
 
 const getGoalDataFromSlug = (slug: string) => {
   const goalKey = goalSlugMap[slug];
   if (!goalKey) return null;
   return { key: goalKey, data: goalContent[goalKey] };
 };
+
+const goalToMainCategory: Record<Goal, string | undefined> = {
+  strength:    'trene-selv',
+  endurance:   'aktivitet-sport',
+  mobility:    'trene-sammen',
+  rehab:       'helse',
+  weight_loss: 'oppfolging',
+  start:       undefined,
+};
+
+export function generateStaticParams() {
+  const cities = Object.keys(cityCoordinates);
+  const goalSlugs = Object.values(goalContent).map((g) => g.slug);
+  return cities.flatMap((by) => goalSlugs.map((goal) => ({ by, goal })));
+}
 
 export async function generateMetadata({
   params,
@@ -133,8 +138,7 @@ export async function generateMetadata({
     };
   }
 
-  const cachedLocation = await findLocationByCity(cityKey);
-  const canonicalLabel = cachedLocation?.label ?? getCityDisplayName(cityKey);
+  const canonicalLabel = getCityDisplayName(cityKey);
   const pageTitle = `${goalData.data.label} i ${canonicalLabel} | fithub.no`;
   const pageUrl = `${appUrl}/trening/${cityKey}/${goalData.data.slug}`;
 
@@ -175,24 +179,31 @@ export default async function TrainingLandingPage({
   }
 
   const cityName = getCityDisplayName(cityKey);
-  const cachedLocation = await findLocationByCity(cityKey);
-  const canonicalLabel = cachedLocation?.label ?? cityName;
-  const canonicalLat = cachedLocation?.lat ?? cityCoordinates[cityKey]?.lat;
-  const canonicalLon = cachedLocation?.lon ?? cityCoordinates[cityKey]?.lon;
-  const activeServices = services.filter((service) => service.is_active !== false);
-  const ranked = getRankedServices(
-    { city: cityKey, sortBy: 'best_match', goal: goalData.key },
-    activeServices
-  );
-  const topResults = ranked.slice(0, 5);
+  const coords = cityCoordinates[cityKey];
+  const canonicalLat = coords.lat;
+  const canonicalLon = coords.lon;
+  const canonicalLabel = cityName;
+
+  let topResults: RankedService[] = [];
+  try {
+    topResults = await searchServices({
+      city: cityKey,
+      lat: canonicalLat,
+      lon: canonicalLon,
+      mainCategory: goalToMainCategory[goalData.key],
+      sort: 'best_match',
+      limit: 5,
+    });
+  } catch { /* render page with empty results */ }
   const limitedResults = topResults.length < 2;
 
   const resultsQueryParams = new URLSearchParams({
-    location: cityName,
-    locationLabel: canonicalLabel,
-    goal: goalData.key,
+    location: canonicalLabel,
     sort: 'best_match',
   });
+  if (goalToMainCategory[goalData.key]) {
+    resultsQueryParams.set('cat', goalToMainCategory[goalData.key]!);
+  }
   if (typeof canonicalLat === 'number') {
     resultsQueryParams.set('lat', canonicalLat.toString());
   }
@@ -201,8 +212,20 @@ export default async function TrainingLandingPage({
   }
   const resultsQuery = resultsQueryParams.toString();
 
+  const pageUrl = `${appUrl}/trening/${cityKey}/${goalData.data.slug}`;
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'FitHub', item: appUrl },
+      { '@type': 'ListItem', position: 2, name: `Trening i ${cityName}`, item: `${appUrl}/resultater?location=${encodeURIComponent(cityName)}&lat=${canonicalLat}&lon=${canonicalLon}` },
+      { '@type': 'ListItem', position: 3, name: goalData.data.label, item: pageUrl },
+    ],
+  };
+
   return (
     <main className={`${container} py-12`}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
       <section className="grid gap-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -259,36 +282,57 @@ export default async function TrainingLandingPage({
         {topResults.length > 0 && (
           <div className="mt-6 grid gap-4">
             {topResults.map((item) => (
-              <Card key={item.service.id} className="p-6">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-900">
-                      {item.service.name}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {item.service.description}
-                    </p>
-                  </div>
-                  <div className="text-xs text-slate-500">{item.matchReason}</div>
-                </div>
-                {item.reasons.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
-                    {item.reasons.map((reason) => (
-                      <Chip key={reason} variant="outline">
-                        {reason}
-                      </Chip>
-                    ))}
+              <Link
+                key={item.service.id}
+                href={`/tilbyder/${item.service.id}?${resultsQuery}`}
+                className="block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
+              >
+                {item.service.cover_image_url && (
+                  <div className="relative h-36 w-full">
+                    <Image
+                      src={item.service.cover_image_url}
+                      alt={item.service.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 800px"
+                      className="object-cover"
+                    />
                   </div>
                 )}
-                <div className="mt-4">
-                  <Link
-                    href={`/tilbyder/${item.service.id}?${resultsQuery}`}
-                    className="text-sm font-semibold text-slate-700 hover:text-slate-900"
-                  >
-                    Se profil
-                  </Link>
+                <div className="p-6">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      {item.service.logo_image_url && (
+                        <Image
+                          src={item.service.logo_image_url}
+                          alt={`${item.service.name} logo`}
+                          width={40}
+                          height={40}
+                          className="h-10 w-10 shrink-0 rounded-full border border-slate-200 object-cover"
+                        />
+                      )}
+                      <div>
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          {item.service.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                          {item.service.description}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-xs text-slate-500">{item.matchReason}</div>
+                  </div>
+                  {item.reasons.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-600">
+                      {item.reasons.map((reason) => (
+                        <Chip key={reason} variant="outline">
+                          {reason}
+                        </Chip>
+                      ))}
+                    </div>
+                  )}
+                  <p className="mt-4 text-sm font-semibold text-slate-700">Se profil →</p>
                 </div>
-              </Card>
+              </Link>
             ))}
           </div>
         )}
@@ -303,7 +347,7 @@ export default async function TrainingLandingPage({
             <p className="mt-2 text-sm text-slate-600">Gratis og uforpliktende.</p>
           </div>
           <ButtonLink
-            href="/flyt"
+            href={`/resultater?${resultsQuery}`}
             variant={limitedResults ? 'secondary' : 'primary'}
             className={limitedResults ? 'opacity-80' : undefined}
           >

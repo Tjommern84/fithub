@@ -6,6 +6,41 @@
   VenuePreference,
 } from './domain';
 
+export const cityDisplayNames: Record<string, string> = {
+  oslo: 'Oslo',
+  bærum: 'Bærum',
+  drammen: 'Drammen',
+  lillestrøm: 'Lillestrøm',
+  asker: 'Asker',
+  bergen: 'Bergen',
+  trondheim: 'Trondheim',
+  stavanger: 'Stavanger',
+  kristiansand: 'Kristiansand',
+  tromsø: 'Tromsø',
+  horten: 'Horten',
+  tønsberg: 'Tønsberg',
+  sandefjord: 'Sandefjord',
+  larvik: 'Larvik',
+  fredrikstad: 'Fredrikstad',
+  sarpsborg: 'Sarpsborg',
+  moss: 'Moss',
+  hamar: 'Hamar',
+  bodø: 'Bodø',
+  ålesund: 'Ålesund',
+  porsgrunn: 'Porsgrunn',
+  skien: 'Skien',
+  arendal: 'Arendal',
+  haugesund: 'Haugesund',
+  gjøvik: 'Gjøvik',
+  lillehammer: 'Lillehammer',
+  molde: 'Molde',
+  harstad: 'Harstad',
+  alta: 'Alta',
+  kongsberg: 'Kongsberg',
+  halden: 'Halden',
+  steinkjer: 'Steinkjer',
+};
+
 export const cityCoordinates: Record<string, { lat: number; lon: number }> = {
   oslo: { lat: 59.9139, lon: 10.7522 },
   'bærum': { lat: 59.8899, lon: 10.5233 },
@@ -27,6 +62,18 @@ export const cityCoordinates: Record<string, { lat: number; lon: number }> = {
   hamar: { lat: 60.7945, lon: 11.0679 },
   bodø: { lat: 67.2804, lon: 14.4049 },
   ålesund: { lat: 62.4722, lon: 6.1495 },
+  porsgrunn: { lat: 59.1404, lon: 9.6558 },
+  skien: { lat: 59.2086, lon: 9.5528 },
+  arendal: { lat: 58.4615, lon: 8.7722 },
+  haugesund: { lat: 59.4138, lon: 5.2683 },
+  gjøvik: { lat: 60.7959, lon: 10.6915 },
+  lillehammer: { lat: 61.1153, lon: 10.4662 },
+  molde: { lat: 62.7375, lon: 7.1591 },
+  harstad: { lat: 68.7983, lon: 16.5419 },
+  alta: { lat: 69.9689, lon: 23.2716 },
+  kongsberg: { lat: 59.6728, lon: 9.6511 },
+  halden: { lat: 59.1228, lon: 11.3878 },
+  steinkjer: { lat: 64.0150, lon: 11.4952 },
 };
 
 const normalizeSpaces = (value: string) => value.trim().replace(/\s+/g, ' ');
@@ -35,6 +82,17 @@ export function normalizeCity(input: string): string {
   const cleaned = normalizeSpaces(input).toLowerCase();
   if (cleaned.length === 0) return '';
   if (cleaned in cityCoordinates) return cleaned;
+
+  // Strip trailing qualifiers like "kommune", "sentrum", "s", "lufthavn"
+  const stripped = cleaned
+    .replace(/\s+(kommune|sentrum|by|s|lufthavn|syd|nord|øst|vest)$/, '')
+    .trim();
+  if (stripped in cityCoordinates) return stripped;
+
+  // Match on the first comma-segment (e.g. "Oslo, Norge" → "oslo")
+  const firstSegment = cleaned.split(',')[0].trim();
+  if (firstSegment !== cleaned && firstSegment in cityCoordinates) return firstSegment;
+
   return '';
 }
 

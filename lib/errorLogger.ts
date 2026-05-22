@@ -1,6 +1,7 @@
 ﻿'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/nextjs';
 
 type ErrorLevel = 'info' | 'warn' | 'error';
 
@@ -33,12 +34,22 @@ const getServiceSupabase = () => {
 };
 
 export async function logError(params: LogErrorParams): Promise<void> {
+  const level = params.level ?? 'error';
+
+  if (level === 'error') {
+    Sentry.captureMessage(params.message, {
+      level: 'error',
+      tags: { source: params.source ?? 'server_action', context: params.context ?? '' },
+      extra: { metadata: params.metadata, userId: params.userId },
+    });
+  }
+
   try {
     const supabase = getServiceSupabase();
     if (!supabase) return;
 
     const payload = {
-      level: params.level ?? 'error',
+      level,
       source: params.source ?? 'server_action',
       context: params.context ?? null,
       message: params.message,
