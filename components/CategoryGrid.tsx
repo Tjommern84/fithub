@@ -365,6 +365,29 @@ export default function CategoryGrid() {
           ))}
         </div>
 
+        {/* ── Paraidrett-flis ───────────────────────────────────────── */}
+        <button
+          type="button"
+          disabled={!location}
+          onClick={() => doNavigate('aktivitet-sport', ['paraidrett'])}
+          className={[
+            'mt-4 w-full rounded-2xl border border-blue-200 bg-blue-50 px-6 py-4',
+            'flex items-center justify-between gap-4 text-left',
+            'transition hover:bg-blue-100 hover:border-blue-300',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400',
+            !location ? 'pointer-events-none opacity-40' : 'cursor-pointer',
+          ].join(' ')}
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-3xl leading-none">♿</span>
+            <div>
+              <p className="font-heading text-base font-bold text-blue-900">Paraidrett</p>
+              <p className="mt-0.5 text-sm text-blue-700">Tilpasset trening og idrett for alle</p>
+            </div>
+          </div>
+          <span className="shrink-0 text-sm font-medium text-blue-600">Se tilbud →</span>
+        </button>
+
         <p className="mx-auto mt-8 max-w-xl text-center text-sm font-light leading-relaxed text-slate-400">
           Velg lokasjon, velg kategori og filtrer. Ingen generiske treff.
         </p>

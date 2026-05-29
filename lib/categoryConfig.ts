@@ -34,7 +34,7 @@ export const CATEGORIES: CategoryConfig[] = [
   {
     key: 'trene-selv',
     label: 'Trene selv',
-    description: 'Gym, styrke og egentreningsøkter',
+    description: 'Tuftepark, treningssenter og egentrening',
     tags: [
       { label: 'Styrke',        value: 'styrke' },
       { label: 'Kondisjon',     value: 'kondisjon' },
@@ -94,13 +94,12 @@ export const CATEGORIES: CategoryConfig[] = [
   {
     key: 'oppfolging',
     label: 'Oppfølging & coaching',
-    description: 'PT, coaching, rehab og ernæring',
+    description: 'PT, coaching og personlig veiledning',
     tags: [
-      { label: 'PT',        value: 'pt' },
-      { label: 'Rehab',     value: 'rehab' },
-      { label: 'Online',    value: 'online' },
-      { label: 'Ernæring',  value: 'ernæring' },
-      { label: 'Smågruppe', value: 'small-group' },
+      { label: 'PT',         value: 'pt' },
+      { label: 'Veiledning', value: 'veiledning' },
+      { label: 'Online',     value: 'online' },
+      { label: 'Smågruppe',  value: 'small-group' },
     ],
     theme: {
       accent:     '#0F766E',

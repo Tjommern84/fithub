@@ -101,14 +101,17 @@ async function main() {
       .update({ base_location: `SRID=4326;POINT(${OSLO.lon} ${OSLO.lat})` })
       .eq('id', id);
 
-    await supabase
-      .from('service_coverage')
-      .upsert({ service_id: id, type: 'city', city: 'oslo' }, { onConflict: 'service_id,type,city' })
-      .throwOnError();
+    try {
+      await supabase
+        .from('service_coverage')
+        .insert({ service_id: id, type: 'city', city: 'oslo' });
+    } catch { /* ignore duplicate */ }
 
-    await supabase
-      .from('service_types')
-      .upsert({ service_id: id, type: 'outdoor' }, { onConflict: 'service_id,type' });
+    try {
+      await supabase
+        .from('service_types')
+        .insert({ service_id: id, type: 'outdoor' });
+    } catch { /* ignore duplicate */ }
 
     added++;
   }

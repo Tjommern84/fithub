@@ -201,7 +201,7 @@ export default function LocationBar() {
         </>
       ) : (
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <div className="relative min-w-0 flex-1 max-w-xs">
+          <div className="relative min-w-0 flex-1">
             <input
               ref={inputRef}
               type="text"

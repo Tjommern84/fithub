@@ -332,7 +332,6 @@ async function main() {
       coverage: [],
       price_level: mapping.priceLevel,
       owner_user_id: null,
-      orgnr: orgnr || null,
     };
 
     processed++;
