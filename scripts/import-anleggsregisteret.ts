@@ -49,7 +49,14 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
                   ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
                   ?? '';
 
-const xlsxFile = join(process.cwd(), 'data', 'anleggsregisteret.xlsx');
+// Støtter enkeltfil (--file=) eller default: begge anleggsdata-filer
+const fileArg = args.find(a => a.startsWith('--file='))?.split('=')[1] ?? null;
+const XLSX_FILES: string[] = fileArg
+  ? [join(process.cwd(), fileArg)]
+  : [
+      join(process.cwd(), 'ressurser', 'anleggsdata (1).xlsx'),
+      join(process.cwd(), 'ressurser', 'anleggsdata (2).xlsx'),
+    ];
 
 // ── Anleggstype → kategori-mapping ────────────────────────────────────────
 // Basert på typiske Anleggsregisteret-kategorier
@@ -125,15 +132,39 @@ const ANLEGG_MAPPINGS: AnleggMapping[] = [
     venues: ['gym'], priceLevel: 'low',
   },
   {
-    keywords: ['tuftepark', 'trimpark', 'utendørs treningsplass', 'utendørs treningspark'],
+    keywords: ['tuftepark', 'trimpark', 'utendørs treningsanlegg', 'utendørs treningsplass', 'utendørs treningspark'],
     mainCategory: 'aktivitet-sport', type: 'outdoor',
     tags: ['tuftepark', 'utetrening', 'styrke', 'gratis'], goals: ['strength', 'weight_loss', 'start', 'endurance'],
     venues: ['outdoor'], priceLevel: 'low',
   },
   {
-    keywords: ['friluftsanlegg', 'friluftsplass', 'aktivitetspark', 'naturpark'],
+    keywords: ['aktivitetspark', 'friluftsanlegg', 'friluftsplass', 'naturpark', 'friluftsområde'],
     mainCategory: 'aktivitet-sport', type: 'outdoor',
     tags: ['utetrening', 'friluft'], goals: ['endurance', 'start'],
+    venues: ['outdoor'], priceLevel: 'low',
+  },
+  {
+    keywords: ['hinderløype', 'hinderbane', 'parkouranlegg'],
+    mainCategory: 'aktivitet-sport', type: 'outdoor',
+    tags: ['utetrening', 'parkour'], goals: ['strength', 'endurance', 'start'],
+    venues: ['outdoor'], priceLevel: 'low',
+  },
+  {
+    keywords: ['pumptrack', 'sykkelpark', 'terrengsykkel'],
+    mainCategory: 'aktivitet-sport', type: 'outdoor',
+    tags: ['sykkel', 'utetrening'], goals: ['endurance', 'start'],
+    venues: ['outdoor'], priceLevel: 'low',
+  },
+  {
+    keywords: ['diskgolfanlegg', 'discgolf', 'frisbeegolf'],
+    mainCategory: 'aktivitet-sport', type: 'outdoor',
+    tags: ['diskgolf', 'utetrening'], goals: ['start'],
+    venues: ['outdoor'], priceLevel: 'low',
+  },
+  {
+    keywords: ['klatre/buldrevegg (ute)', 'klatrevegg (ute)', 'buldrevegg (ute)', 'klatrevegg utendørs'],
+    mainCategory: 'aktivitet-sport', type: 'outdoor',
+    tags: ['klatring', 'utetrening'], goals: ['strength', 'start'],
     venues: ['outdoor'], priceLevel: 'low',
   },
 ];
@@ -183,48 +214,49 @@ async function main() {
   if (dryRun) console.log('   [DRY RUN – ingen endringer lagres]');
   console.log();
 
-  if (!existsSync(xlsxFile)) {
-    console.error(`❌ Finner ikke ${xlsxFile}`);
-    console.error('');
-    console.error('   Last ned registerdata fra:');
-    console.error('   https://www.anleggsregisteret.no/');
-    console.error('   → Søk → Last ned → Lagre som data/anleggsregisteret.xlsx');
+  const existingFiles = XLSX_FILES.filter(existsSync);
+  if (existingFiles.length === 0) {
+    console.error(`❌ Ingen XLSX-filer funnet. Forventet:`);
+    XLSX_FILES.forEach(f => console.error(`   ${f}`));
+    console.error('\n   Last ned fra backoffice.anleggsregisteret.no/map-search');
     process.exit(1);
   }
 
   if (!SUPABASE_URL) { console.error('❌ NEXT_PUBLIC_SUPABASE_URL mangler'); process.exit(1); }
 
-  // Les XLSX
-  console.log(`📖 Leser ${xlsxFile}…`);
-  const workbook = XLSX.readFile(xlsxFile);
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[];
-  console.log(`   ${rows.length} rader funnet i ark: "${sheetName}"`);
-
-  // Vis kolonnenavn fra første rad for debugging
-  if (rows.length > 0) {
-    console.log(`   Kolonner: ${Object.keys(rows[0]).join(' | ')}`);
+  // Les og slå sammen alle filer
+  let rows: Record<string, unknown>[] = [];
+  for (const file of existingFiles) {
+    console.log(`📖 Leser ${file}…`);
+    const workbook = XLSX.readFile(file);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const fileRows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[];
+    console.log(`   ${fileRows.length} rader`);
+    rows = rows.concat(fileRows);
   }
+  console.log(`   Totalt: ${rows.length} rader\n`);
+
+  if (rows.length === 0) { console.error('❌ Ingen rader'); process.exit(1); }
+  console.log(`   Kolonner: ${Object.keys(rows[0]).join(' | ')}`);
   console.log();
 
-  // Kartlegg kolonnenavn (Anleggsregisteret kan ha norske kolonnenavn)
-  // Vanlige felt: Anleggsnr, Anleggsnavn, Anleggstype, Adresse, Postnr, Poststed, Kommune, Breddegrad, Lengdegrad
   const colMap = (row: Record<string, unknown>) => {
     const k = Object.keys(row);
     const find = (...candidates: string[]) =>
       k.find(c => candidates.some(n => c.toLowerCase().includes(n.toLowerCase()))) ?? null;
 
     return {
-      anleggsnr:   find('anleggsnr', 'id', 'nr'),
+      anleggsnr:   find('anleggsnummer', 'anleggsnr', 'id', 'nr'),
       navn:        find('anleggsnavn', 'navn', 'name'),
-      anleggstype: find('anleggstype', 'type', 'kategori'),
+      anleggstype: find('anleggstype'),
+      status:      find('anleggsstatus', 'status'),
       adresse:     find('adresse', 'gate', 'vei'),
       postnr:      find('postnr', 'postkode', 'postnum'),
-      poststed:    find('poststed', 'sted', 'by', 'city'),
+      poststed:    find('poststed'),
       kommune:     find('kommune'),
       lat:         find('breddegrad', 'lat', 'y_koord', 'nord'),
       lon:         find('lengdegrad', 'lon', 'lng', 'x_koord', 'øst'),
+      orgnr:       k.find(c => c.toLowerCase().includes('eier') && c.toLowerCase().includes('organisasjonsnr')) ?? null,
     };
   };
 
@@ -255,14 +287,18 @@ async function main() {
     const anleggsnr   = get(colKeys.anleggsnr);
     const navn        = get(colKeys.navn);
     const anleggstype = get(colKeys.anleggstype);
+    const status      = get(colKeys.status);
     const adresse     = get(colKeys.adresse);
     const postnr      = get(colKeys.postnr);
     const poststed    = get(colKeys.poststed);
     const kommune     = get(colKeys.kommune);
     const latRaw      = get(colKeys.lat);
     const lonRaw      = get(colKeys.lon);
+    const orgnr       = get(colKeys.orgnr);
 
     if (!navn) continue;
+    // Hopp over ikke-eksisterende anlegg
+    if (status && status.toLowerCase() !== 'eksisterende') { skippedType++; continue; }
 
     const mapping = findMapping(anleggstype);
     if (!mapping) { skippedType++; continue; }
@@ -296,6 +332,7 @@ async function main() {
       coverage: [],
       price_level: mapping.priceLevel,
       owner_user_id: null,
+      orgnr: orgnr || null,
     };
 
     processed++;
