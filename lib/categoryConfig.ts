@@ -166,6 +166,8 @@ export const CATEGORIES: CategoryConfig[] = [
       { label: 'Langrenn',    value: 'langrenn' },
       { label: 'Klatring',    value: 'klatring' },
       { label: 'Paraidrett',  value: 'paraidrett' },
+      { label: 'Tuftepark',   value: 'tuftepark' },
+      { label: 'Utetrening',  value: 'utetrening' },
     ],
     theme: {
       accent:     '#DC2626',

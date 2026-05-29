@@ -124,6 +124,18 @@ const ANLEGG_MAPPINGS: AnleggMapping[] = [
     tags: ['bowling'], goals: ['start'],
     venues: ['gym'], priceLevel: 'low',
   },
+  {
+    keywords: ['tuftepark', 'trimpark', 'utendørs treningsplass', 'utendørs treningspark'],
+    mainCategory: 'aktivitet-sport', type: 'outdoor',
+    tags: ['tuftepark', 'utetrening', 'styrke', 'gratis'], goals: ['strength', 'weight_loss', 'start', 'endurance'],
+    venues: ['outdoor'], priceLevel: 'low',
+  },
+  {
+    keywords: ['friluftsanlegg', 'friluftsplass', 'aktivitetspark', 'naturpark'],
+    mainCategory: 'aktivitet-sport', type: 'outdoor',
+    tags: ['utetrening', 'friluft'], goals: ['endurance', 'start'],
+    venues: ['outdoor'], priceLevel: 'low',
+  },
 ];
 
 // ── Filtrer relevante anlegg ──────────────────────────────────────────────
