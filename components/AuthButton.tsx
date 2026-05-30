@@ -62,7 +62,7 @@ export default function AuthButton() {
       </Button>
 
       {showForm && (
-        <div className="absolute right-0 top-12 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+        <div className="absolute right-0 top-12 z-popup w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
           <form
             className="grid gap-3"
             onSubmit={async (event) => {
@@ -86,7 +86,14 @@ export default function AuthButton() {
                 },
               });
               if (authError) {
-                setError('Kunne ikke sende magisk lenke.');
+                console.error('[auth] signInWithOtp feil', authError.status, authError.code, authError.message);
+                setError(
+                  authError.status === 422
+                    ? 'Innlogging er ikke aktivert. Kontakt support.'
+                    : authError.status === 429
+                    ? 'For mange forsøk. Vent litt og prøv igjen.'
+                    : 'Kunne ikke sende magisk lenke.'
+                );
                 setStatus('error');
                 return;
               }
