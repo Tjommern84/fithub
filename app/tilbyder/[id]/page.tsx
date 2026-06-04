@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-export const revalidate = 300;
+export const revalidate = 3600;
 import ProviderClient from './ProviderClient';
 import type { Service } from '../../../lib/domain';
 import { services as staticServices } from '../../../lib/providers';
