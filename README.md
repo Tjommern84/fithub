@@ -33,6 +33,8 @@ Norwegian marketplace matching users with gyms, PTs, sports clubs and classes �
 | `/trening/[by]/[goal]` | Goal landing pages — 6 goals × 32 cities, ISR 1h |
 | `/dashboard/[serviceId]` | Provider dashboard — stats, analytics, profile editor |
 | `/min-side` | User dashboard — bookings, GDPR export/delete |
+| `/admin/login` | Admin login — email magic link |
+| `/admin/verify` | Admin 2FA — Supabase TOTP (authenticator app) |
 | `/admin` | Admin panel — metrics, curation, invites |
 | `/invite/[token]` | Provider invite onboarding |
 
@@ -63,15 +65,23 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=https://fithub.no
-NEXT_PUBLIC_ADMIN_EMAIL=
+NEXT_PUBLIC_ENABLE_ADMIN=true
+ADMIN_EMAIL=                 # dev/bootstrap fallback only; production admins live in admin_users
+ADMIN_PHONE_E164=            # optional metadata in admin_users, e.g. +4712345678
+ADMIN_USER_ID=               # optional bootstrap override
 SERPER_API_KEY=              # data import
 RESEND_API_KEY=              # transactional email
 NEXT_PUBLIC_SENTRY_DSN=      # error tracking
 ```
 
+Admin access uses `admin_users` plus Supabase TOTP MFA (`aal2`). Run
+`sql/16_admin_users.sql`, then run `npm run admin:bootstrap` after the admin
+has logged in once. Pre-enroll a verified TOTP factor in Supabase before
+using `/admin`.
+
 ### Migrations
 
-Run `sql/00_schema.sql` through `sql/15_rating_trigger.sql` in order via Supabase SQL editor. The remaining loose `.sql` files are legacy — ignore.
+Run `sql/00_schema.sql` through `sql/20_function_search_path.sql` in order via Supabase SQL editor. The remaining loose `.sql` files are legacy — ignore.
 
 ---
 

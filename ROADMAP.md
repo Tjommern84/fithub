@@ -1,6 +1,6 @@
 # Roadmap — fithub.no
 
-*Sist oppdatert: mai 2026*
+*Sist oppdatert: juni 2026*
 
 ---
 
@@ -12,6 +12,8 @@
 - `robots.ts`, `sitemap.ts` (async, up to 2000 provider pages)
 - Schema.org JSON-LD: `WebSite`, `LocalBusiness`, `BreadcrumbList`
 - `hreflang nb-NO`, canonical URLs
+- Admin-autentisering: magic link + Supabase TOTP MFA (`aal2`) på `/admin/login` + `/admin/verify`
+- RLS-innstramming (migrations 18–20): policies på alle tidligere usikrede tabeller, cache-tabeller kun `service_role`, eksplisitt `search_path` på triggerfunksjoner
 
 **Søk og resultater**
 - `search_services()` — 16 params, PostGIS proximity, full text, pagination
@@ -39,7 +41,7 @@
 
 **Data (~27 000 tjenester)**
 - BRREG, Google Places (PT, gym, idrettslag, gruppetimer), OSM, para-idrett
-- `♿ Paraidrett`-merke og tagfilter i aktivitet-sport
+- Egen `paraidrett`-hovedkategori (tidligere tagfilter i aktivitet-sport)
 
 ---
 

@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@supabase/supabase-js';
-import { isAdminByEmail } from '../../lib/adminHelper';
+import { isAdminSession } from '../../lib/adminHelper';
 
 const SERVICE_SELECT =
   'id, name, type, description, price_level, rating_avg, rating_count, cover_image_url, logo_image_url, is_active, is_featured, featured_rank';
@@ -118,7 +118,7 @@ export async function adminUpdateServiceCuration(
     categories: string[];
   }
 ): Promise<{ ok: boolean; message: string }> {
-  const adminOk = await isAdminByEmail(accessToken);
+  const adminOk = await isAdminSession(accessToken);
   if (!adminOk) {
     return { ok: false, message: 'Ikke autorisert.' };
   }
@@ -157,7 +157,7 @@ export async function adminUpsertCategory(
   accessToken: string,
   payload: { id?: string; name: string; description?: string }
 ): Promise<{ ok: boolean; message: string }> {
-  const adminOk = await isAdminByEmail(accessToken);
+  const adminOk = await isAdminSession(accessToken);
   if (!adminOk) {
     return { ok: false, message: 'Ikke autorisert.' };
   }

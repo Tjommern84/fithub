@@ -219,7 +219,7 @@ export default function LocationBar() {
               autoComplete="off"
             />
             {showSuggestions && (loadingSuggestions || suggestions.length > 0) && (
-              <div className="absolute left-0 top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+              <div className="absolute left-0 top-full z-dropdown mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
                 {loadingSuggestions && (
                   <p className="px-4 py-3 text-sm text-slate-400">Søker…</p>
                 )}
@@ -257,7 +257,7 @@ export default function LocationBar() {
               </svg>
             </button>
             {radiusOpen && (
-              <div className="absolute left-0 top-full z-50 mt-1.5 w-28 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+              <div className="absolute left-0 top-full z-dropdown mt-1.5 w-28 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
                 {RADIUS_OPTIONS.map(({ value, label }) => (
                   <button
                     key={String(value)}

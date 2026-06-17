@@ -45,7 +45,7 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
+    <div className="fixed inset-0 z-modal flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">
       <Card className="w-full max-w-lg">
         <div className="flex items-start justify-between gap-4">
           <div>

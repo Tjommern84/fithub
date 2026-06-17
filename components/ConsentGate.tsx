@@ -10,6 +10,7 @@ export default function ConsentGate() {
   const [session, setSession] = useState<Session | null>(null);
   const [missingConsents, setMissingConsents] = useState<ConsentType[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'saving'>('idle');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!supabase) return;
@@ -62,7 +63,7 @@ export default function ConsentGate() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 py-10">
+    <div className="fixed inset-0 z-modal flex items-center justify-center bg-slate-900/60 px-4 py-10">
       <div
         role="dialog"
         aria-modal="true"
@@ -85,10 +86,13 @@ export default function ConsentGate() {
           type="button"
           onClick={async () => {
             if (!session.access_token || status === 'saving') return;
+            setError('');
             setStatus('saving');
             const result = await acceptConsents(session.access_token);
             if (result.ok) {
               setMissingConsents([]);
+            } else {
+              setError(result.message);
             }
             setStatus('idle');
           }}
@@ -98,6 +102,7 @@ export default function ConsentGate() {
         >
           {status === 'saving' ? 'Lagrer ...' : 'Jeg godtar'}
         </button>
+        {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
       </div>
     </div>
   );

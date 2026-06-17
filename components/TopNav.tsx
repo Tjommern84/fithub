@@ -5,7 +5,7 @@ import { container } from '../lib/ui';
 
 export default function TopNav() {
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-header border-b border-slate-200 bg-white/80 backdrop-blur">
       {/* Rad 1: logo + navigasjon */}
       <div className={`${container} flex h-12 items-center justify-between`}>
         <Link href="/" className="shrink-0 text-sm font-semibold tracking-wide text-slate-900">

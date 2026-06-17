@@ -51,13 +51,13 @@ const getUserId = async (accessToken: string) => {
 
 export async function getMissingConsents(accessToken: string): Promise<ConsentType[]> {
   if (!accessToken) return requiredConsents;
-  const supabase = getSupabase(accessToken);
-  if (!supabase) return requiredConsents;
+  const consentClient = getServiceSupabase() ?? getSupabase(accessToken);
+  if (!consentClient) return requiredConsents;
 
   const userId = await getUserId(accessToken);
   if (!userId) return requiredConsents;
 
-  const { data } = await supabase
+  const { data } = await consentClient
     .from('user_consents')
     .select('consent_type')
     .eq('user_id', userId)
@@ -72,8 +72,8 @@ export async function acceptConsents(accessToken: string): Promise<{ ok: boolean
     return { ok: false, message: 'Du må være innlogget.' };
   }
 
-  const supabase = getSupabase(accessToken);
-  if (!supabase) {
+  const consentClient = getServiceSupabase() ?? getSupabase(accessToken);
+  if (!consentClient) {
     return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
@@ -89,11 +89,25 @@ export async function acceptConsents(accessToken: string): Promise<{ ok: boolean
     accepted_at: now,
   }));
 
-  const { error } = await supabase.from('user_consents').upsert(rows, {
-    ignoreDuplicates: true,
+  const { error } = await consentClient.from('user_consents').upsert(rows, {
+    onConflict: 'user_id,consent_type',
   });
+
   if (error) {
-    return { ok: false, message: 'Kunne ikke lagre samtykke.' };
+    const { error: deleteError } = await consentClient
+      .from('user_consents')
+      .delete()
+      .eq('user_id', userId)
+      .in('consent_type', rows.map((row) => row.consent_type));
+
+    if (deleteError) {
+      return { ok: false, message: 'Kunne ikke lagre samtykke.' };
+    }
+
+    const { error: insertError } = await consentClient.from('user_consents').insert(rows);
+    if (insertError) {
+      return { ok: false, message: 'Kunne ikke lagre samtykke.' };
+    }
   }
 
   return { ok: true, message: 'Samtykke lagret.' };

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "admin:bootstrap": "tsx scripts/bootstrap-admin.ts",
     "brreg:import": "tsx scripts/import-brreg.ts",
     "brreg:import:dry": "tsx scripts/import-brreg.ts --dry-run --limit=100",
     "brreg:export": "tsx scripts/export-to-sqlite.ts",

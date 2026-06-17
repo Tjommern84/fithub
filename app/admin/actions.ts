@@ -7,7 +7,7 @@ import { sendEmail, isEmailConfigured } from '../../lib/emailClient';
 import { providerInviteEmail } from '../../lib/emailTemplates';
 import { logError } from '../../lib/errorLogger';
 import { invalidateServiceCaches } from '../../lib/cacheInvalidation';
-import { isAdminByEmail } from '../../lib/adminHelper';
+import { getAdminAccess, isAdminSession, type AdminAccessResult } from '../../lib/adminHelper';
 import crypto from 'crypto';
 
 export type AdminServiceOverview = {
@@ -136,10 +136,12 @@ const getServiceSupabase = () => {
   });
 };
 
-const getAdminEmail = () => process.env.ADMIN_EMAIL?.toLowerCase() ?? '';
-
 export async function isAdmin(accessToken: string): Promise<boolean> {
-  return isAdminByEmail(accessToken);
+  return isAdminSession(accessToken);
+}
+
+export async function getAdminAccessStatus(accessToken: string): Promise<AdminAccessResult> {
+  return getAdminAccess(accessToken);
 }
 
 export async function getAdminOverview(accessToken: string): Promise<AdminOverviewState> {
@@ -945,5 +947,3 @@ export async function exportEventSummary(
 
   return { ok: true, message: 'Eksport klar.', data: results };
 }
-
-

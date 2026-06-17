@@ -3,7 +3,8 @@ export type MainCategory =
   | 'trene-sammen'
   | 'oppfolging'
   | 'aktivitet-sport'
-  | 'helse';
+  | 'helse'
+  | 'paraidrett';
 
 export type TagOption = { label: string; value: string };
 
@@ -185,6 +186,33 @@ export const CATEGORIES: CategoryConfig[] = [
     ],
     serviceTypes: ['sport'],
   },
+  {
+    key: 'paraidrett',
+    label: 'Paraidrett',
+    description: 'Tilpasset trening og idrett for alle',
+    tags: [
+      { label: 'Tilpasset idrett', value: 'paraidrett' },
+      { label: 'Svømming',         value: 'svomming' },
+      { label: 'Rullestol',        value: 'rullestol' },
+    ],
+    theme: {
+      accent:     '#2563EB',
+      headerBg:   '#030B1A',
+      titleColor: '#BFDBFE',
+      subColor:   '#7BAEE0',
+      badgeBg:    '#DBEAFE',
+      badgeText:  '#1E3A6E',
+      barStart:   '#2563EB',
+      barEnd:     '#60A5FA',
+    },
+    accent: 'from-blue-300/60 via-sky-300/40 to-cyan-300/30',
+    images: [
+      '/bilder/Idrettslag%20%26%20Sport/pexels-pspov-3046582.webp',
+      '/bilder/Outdoor/pexels-rdne-5837154.webp',
+      '/bilder/Idrettslag%20%26%20Sport/pexels-pavel-danilyuk-6203514.webp',
+    ],
+    serviceTypes: ['sport'],
+  },
 ];
 
 export const CATEGORY_LABELS: Record<MainCategory, string> = {
@@ -193,6 +221,7 @@ export const CATEGORY_LABELS: Record<MainCategory, string> = {
   oppfolging: 'Oppfølging & coaching',
   'aktivitet-sport': 'Aktivitet & sport',
   helse: 'Helse & behandling',
+  paraidrett: 'Paraidrett',
 };
 
 export function getCategoryConfig(key: string): CategoryConfig | undefined {
@@ -205,7 +234,8 @@ export function parseMainCategory(value: string): MainCategory | null {
     value === 'trene-sammen' ||
     value === 'oppfolging' ||
     value === 'aktivitet-sport' ||
-    value === 'helse'
+    value === 'helse' ||
+    value === 'paraidrett'
   ) {
     return value;
   }

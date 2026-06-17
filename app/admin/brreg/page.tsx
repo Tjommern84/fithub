@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { getServiceSupabase } from '../../../lib/serviceSupabase';
-import { isAdminByEmail } from '../../../lib/adminHelper';
+import { getAdminAccess } from '../../../lib/adminHelper';
 import { redirect } from 'next/navigation';
 import { Card } from '../../../components/ui/Card';
 import { container } from '../../../lib/ui';
@@ -32,12 +32,15 @@ export default async function BrregAdminPage({
   const { data: { session } } = await supabaseAuth.auth.getSession();
 
   if (!session?.access_token) {
-    redirect('/');
+    redirect('/admin/login?next=/admin/brreg');
   }
 
-  const adminOk = await isAdminByEmail(session.access_token);
-  if (!adminOk) {
-    redirect('/');
+  const adminAccess = await getAdminAccess(session.access_token);
+  if (!adminAccess.ok) {
+    if (adminAccess.reason === 'mfa_required') {
+      redirect('/admin/verify?next=/admin/brreg');
+    }
+    redirect('/admin/login?next=/admin/brreg');
   }
 
   const supabase = getServiceSupabase();

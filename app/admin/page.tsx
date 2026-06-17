@@ -11,6 +11,7 @@ import {
   exportLeadsSummary,
   exportServicesData,
   getAdminConsentMetrics,
+  getAdminAccessStatus,
   getAdminMetrics,
   getAdminOverview,
   getAdminOrganizations,
@@ -19,7 +20,6 @@ import {
   getFeedbackList,
   getProviderInvites,
   getServiceQuality,
-  isAdmin,
   markAppErrorKnown,
   toggleServiceActive,
   type AdminMetrics,
@@ -48,6 +48,7 @@ type BulkResult = { line: string; ok: boolean; message: string; link?: string };
 export default function AdminPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [adminState, setAdminState] = useState<'unknown' | 'ok' | 'nope'>('unknown');
   const [overview, setOverview] = useState<AdminOverviewState>({
     ok: false,
@@ -89,13 +90,20 @@ export default function AdminPage() {
       setStatus('error');
       return;
     }
-    if (!supabase) return;
+    if (!supabase) {
+      setAuthChecked(true);
+      return;
+    }
     let isMounted = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (isMounted) setSession(data.session);
+      if (isMounted) {
+        setSession(data.session);
+        setAuthChecked(true);
+      }
     });
     const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
+      setAuthChecked(true);
     });
     return () => {
       isMounted = false;
@@ -104,13 +112,21 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (!session?.access_token) return;
+    if (!authChecked) return;
+    if (!session?.access_token) {
+      router.replace('/admin/login?next=/admin');
+      return;
+    }
     const loadAdmin = async () => {
       setStatus('loading');
-      const adminOk = await isAdmin(session.access_token);
-      if (!adminOk) {
+      const adminAccess = await getAdminAccessStatus(session.access_token);
+      if (!adminAccess.ok) {
+        if (adminAccess.reason === 'mfa_required') {
+          router.replace('/admin/verify?next=/admin');
+          return;
+        }
         setAdminState('nope');
-        router.replace('/');
+        router.replace('/admin/login?next=/admin');
         return;
       }
       setAdminState('ok');
@@ -147,7 +163,7 @@ export default function AdminPage() {
       setStatus(data.ok ? 'ready' : 'error');
     };
     loadAdmin();
-  }, [session?.access_token, router]);
+  }, [authChecked, session?.access_token, router]);
 
   const handleToggle = async (serviceId: string, active: boolean) => {
     if (!session?.access_token) return;
@@ -221,7 +237,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!session || adminState === 'nope') {
+  if (!authChecked || !session || adminState === 'nope') {
     return (
       <main className={`${container} py-16`}>
         <Card>

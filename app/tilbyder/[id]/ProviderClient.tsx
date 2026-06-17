@@ -813,7 +813,7 @@ export default function ProviderClient({ params, service: initialService, relate
       )}
 
       <div className="sm:hidden">
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur backdrop-saturate-150">
+        <div className="fixed inset-x-0 bottom-0 z-bar border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur backdrop-saturate-150">
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-slate-500">Trygt og enkelt – ingen binding.</p>
             <Button
@@ -829,7 +829,7 @@ export default function ProviderClient({ params, service: initialService, relate
 
       {isRequestModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          className="fixed inset-0 z-modal flex items-end justify-center sm:items-center"
           role="dialog"
           aria-modal="true"
         >
