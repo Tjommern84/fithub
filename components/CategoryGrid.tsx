@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { CATEGORIES, type CategoryConfig, type MainCategory } from '../lib/categoryConfig';
@@ -8,7 +8,7 @@ import { useLocation } from '../lib/locationContext';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const ACCENT: Record<MainCategory, {
+const ACCENT: Record<MainCategory | 'tur', {
   gradient: string;
   activeChip: string;
   ring: string;
@@ -43,6 +43,33 @@ const ACCENT: Record<MainCategory, {
     activeChip: 'bg-blue-500 border-blue-500 text-white',
     ring: 'ring-blue-400',
   },
+  'utendors': {
+    gradient: 'from-green-500/70 via-emerald-400/40 to-transparent',
+    activeChip: 'bg-green-600 border-green-600 text-white',
+    ring: 'ring-green-400',
+  },
+  'tur': {
+    gradient: 'from-stone-500/70 via-amber-700/30 to-transparent',
+    activeChip: 'bg-stone-600 border-stone-600 text-white',
+    ring: 'ring-stone-400',
+  },
+};
+
+const TUR_TILE = {
+  key: 'tur' as const,
+  label: 'Turruter',
+  description: 'Fotruter, skiløyper og sykkelruter i hele Norge',
+  tags: [
+    { label: 'Fotrute', value: 'fotrute' },
+    { label: 'Skiløype', value: 'skiloype' },
+    { label: 'Sykkelrute', value: 'sykkelrute' },
+  ],
+  images: [
+    '/bilder/tur/pexels-424fotograf-169879395-14500356.webp',
+    '/bilder/tur/pexels-imagevain-2346018.webp',
+    '/bilder/tur/pexels-orlando-s-197680330-11518760.webp',
+    '/bilder/tur/pexels-simon73-29749447.webp',
+  ],
 };
 
 function firstPart(label: string): string {
@@ -50,6 +77,10 @@ function firstPart(label: string): string {
 }
 
 // ─── CategoryCard ─────────────────────────────────────────────────────────────
+
+type CardConfig = Pick<CategoryConfig, 'label' | 'description' | 'tags' | 'images'> & {
+  key: MainCategory | 'tur';
+};
 
 function CategoryCard({
   config,
@@ -59,7 +90,7 @@ function CategoryCard({
   className = '',
   priority = false,
 }: {
-  config: CategoryConfig;
+  config: CardConfig;
   selected: boolean;
   disabled: boolean;
   onClick: () => void;
@@ -185,85 +216,9 @@ function CategoryCard({
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-const GEO_PROMPT_KEY = 'sdem_geo_prompt_dismissed';
-
 export default function CategoryGrid() {
   const router = useRouter();
-  const { location, setLocation } = useLocation();
-  const [geoPrompt, setGeoPrompt] = useState<'hidden' | 'asking' | 'visible'>('hidden');
-  const [geoLoading, setGeoLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const handleSearch = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (!q) return;
-    const p = new URLSearchParams();
-    p.set('q', q);
-    if (location) {
-      p.set('location', location.label);
-      if (location.city) p.set('city', location.city);
-      p.set('lat', String(location.lat));
-      p.set('lon', String(location.lon));
-      if (location.radius !== null) p.set('radius', String(location.radius));
-    }
-    router.push(`/resultater?${p.toString()}`);
-  }, [searchQuery, location, router]);
-
-  // Show geolocation prompt on first load if no saved location and not dismissed
-  useEffect(() => {
-    const dismissed = localStorage.getItem(GEO_PROMPT_KEY);
-    const saved = localStorage.getItem('sdem_location_v1');
-    if (!dismissed && !saved && 'geolocation' in navigator) {
-      setGeoPrompt('visible');
-    }
-  }, []);
-
-  const reverseGeocodeTop = async (lat: number, lon: number): Promise<{ label: string; city: string | null }> => {
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
-        { headers: { 'Accept-Language': 'no' } }
-      );
-      const json = await res.json();
-      const addr = json.address ?? {};
-      const city = addr.city ?? addr.town ?? addr.municipality ?? addr.village ?? null;
-      const road = addr.road as string | undefined;
-      const houseNr = addr.house_number as string | undefined;
-      const streetPart = [road, houseNr].filter(Boolean).join(' ');
-      const label = streetPart
-        ? `${streetPart}, ${city ?? ''}`.replace(/,\s*$/, '')
-        : (city ?? 'Min lokasjon');
-      return { label, city };
-    } catch {
-      return { label: 'Min lokasjon', city: null };
-    }
-  };
-
-  const handleGeoAccept = () => {
-    setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = Number(pos.coords.latitude.toFixed(6));
-        const lon = Number(pos.coords.longitude.toFixed(6));
-        const result = await reverseGeocodeTop(lat, lon);
-        setLocation({ label: result.label, city: result.city, lat, lon, source: 'gps', radius: 10, bydel: null });
-        setGeoPrompt('hidden');
-        setGeoLoading(false);
-      },
-      () => {
-        setGeoPrompt('hidden');
-        setGeoLoading(false);
-        localStorage.setItem(GEO_PROMPT_KEY, '1');
-      },
-      { timeout: 8000 }
-    );
-  };
-
-  const handleGeoSkip = () => {
-    localStorage.setItem(GEO_PROMPT_KEY, '1');
-    setGeoPrompt('hidden');
-  };
+  const { location } = useLocation();
 
   const doNavigate = useCallback((cat: MainCategory, tags: string[]) => {
     if (!location) return;
@@ -275,7 +230,6 @@ export default function CategoryGrid() {
     p.set('lat', String(location.lat));
     p.set('lon', String(location.lon));
     if (location.radius !== null) p.set('radius', String(location.radius));
-    if (location.bydel) p.set('bydel', location.bydel);
     router.push(`/resultater?${p.toString()}`);
   }, [location, router]);
 
@@ -290,34 +244,6 @@ export default function CategoryGrid() {
 
   return (
     <section>
-
-      {/* ── Geolocation prompt ──────────────────────────────────────── */}
-      {geoPrompt === 'visible' && (
-        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-            <p className="text-sm text-amber-800">
-              📍 Tillat stedstjenester for å finne tilbud nær deg automatisk
-            </p>
-            <div className="flex shrink-0 gap-2">
-              <button
-                type="button"
-                onClick={handleGeoAccept}
-                disabled={geoLoading}
-                className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-600 disabled:opacity-60"
-              >
-                {geoLoading ? 'Henter…' : 'Tillat'}
-              </button>
-              <button
-                type="button"
-                onClick={handleGeoSkip}
-                className="rounded-lg border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-100"
-              >
-                Hopp over
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Page content ─────────────────────────────────────────────── */}
       <div className="mx-auto max-w-6xl px-4 py-8">
@@ -334,39 +260,19 @@ export default function CategoryGrid() {
           </p>
         </div>
 
-        {/* Search bar */}
-        <form className="mb-8" onSubmit={handleSearch}>
-          <div className="relative max-w-lg">
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Søk på treningssted, PT, yoga…"
-              className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-4 pr-28 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-400"
-            />
-            <button
-              type="submit"
-              disabled={!searchQuery.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-rose-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:opacity-40"
-            >
-              Søk
-            </button>
-          </div>
-        </form>
-
         {/* ── Category grid ─────────────────────────────────────────── */}
         <div className="grid grid-cols-2 gap-4 sm:gap-5">
-          {CATEGORIES.map((cat, idx) => (
+          {[...CATEGORIES, TUR_TILE].map((cat, idx, all) => (
             <CategoryCard
               key={cat.key}
               config={cat}
               selected={false}
-              disabled={!location}
-              onClick={() => handleCardClick(cat.key)}
+              disabled={cat.key === 'tur' ? false : !location}
+              onClick={() => (cat.key === 'tur' ? router.push('/tur') : handleCardClick(cat.key))}
               priority={idx < 4}
               className={[
                 'h-56 sm:h-64 lg:h-72',
-                idx === CATEGORIES.length - 1 && CATEGORIES.length % 2 !== 0
+                idx === all.length - 1 && all.length % 2 !== 0
                   ? 'col-span-2'
                   : '',
               ].filter(Boolean).join(' ')}

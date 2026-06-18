@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import type { Service } from './domain';
 import type { RankedService } from './matching';
+import { findSettlementInQuery } from './settlementsDb';
 
 type SearchServicesRow = {
   service_id: string;
@@ -137,4 +138,196 @@ export async function searchServices(params: SearchParams): Promise<RankedServic
   return (Array.isArray(data) ? data : []).map((row) =>
     mapRowToRankedService(row as SearchServicesRow)
   );
+}
+
+// ─── Tier 3: frittstående navnetreff, ingen dekningsbegrensning ──────────────
+// Egen type — IKKE RankedService — siden Tier 3-rader mangler ekte deknings-/score-semantikk
+// (search_services_unanchored() joiner ikke mot service_coverage).
+
+type UnanchoredSearchRow = {
+  service_id: string;
+  name: string;
+  type: Service['type'];
+  description: string;
+  city: string | null;
+  address: string | null;
+  tags: string[];
+  rating_avg: number;
+  rating_count: number;
+  price_level: Service['price_level'];
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  orgnr: string | null;
+  cover_image_url: string | null;
+  logo_image_url: string | null;
+  lat: number | null;
+  lon: number | null;
+  distance_km: number | null;
+  similarity_score: number;
+};
+
+export type UnanchoredService = {
+  id: string;
+  name: string;
+  type: Service['type'];
+  description: string;
+  city: string | null;
+  address: string | null;
+  tags: string[];
+  rating_avg: number;
+  rating_count: number;
+  price_level: Service['price_level'];
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  orgnr: string | null;
+  cover_image_url: string | null;
+  logo_image_url: string | null;
+  lat: number | null;
+  lon: number | null;
+  distanceKm: number | null;
+  similarityScore: number;
+};
+
+const mapRowToUnanchoredService = (row: UnanchoredSearchRow): UnanchoredService => ({
+  id: row.service_id,
+  name: row.name,
+  type: row.type,
+  description: row.description,
+  city: row.city ?? null,
+  address: row.address ?? null,
+  tags: row.tags ?? [],
+  rating_avg: row.rating_avg ?? 0,
+  rating_count: row.rating_count ?? 0,
+  price_level: row.price_level,
+  website: row.website ?? null,
+  phone: row.phone ?? null,
+  email: row.email ?? null,
+  orgnr: row.orgnr ?? null,
+  cover_image_url: row.cover_image_url ?? null,
+  logo_image_url: row.logo_image_url ?? null,
+  lat: row.lat ?? null,
+  lon: row.lon ?? null,
+  distanceKm: row.distance_km ?? null,
+  similarityScore: row.similarity_score ?? 0,
+});
+
+export type UnanchoredSearchParams = {
+  query: string;
+  lat?: number;
+  lon?: number;
+  tags?: string[];
+  limit?: number;
+};
+
+// Kjent å feile (gracefully, ikke throw) før sql/24_search_fallback_tiers.sql er kjørt
+// av bruker — funksjonen finnes ikke i Supabase ennå. Samme mønster som getSettlementsInBounds.
+export async function searchServicesUnanchored(
+  params: UnanchoredSearchParams
+): Promise<UnanchoredService[]> {
+  if (!supabase) return [];
+  const baseArgs = {
+    p_query: params.query,
+    p_lat: params.lat ?? null,
+    p_lon: params.lon ?? null,
+    p_limit: params.limit ?? 20,
+  };
+  const tags = params.tags && params.tags.length > 0 ? params.tags : null;
+
+  const withTags = await supabase.rpc('search_services_unanchored', { ...baseArgs, p_tags: tags });
+  let data = withTags.data as unknown[] | null;
+  let error = withTags.error;
+
+  const msg = `${error?.message ?? ''}`.toLowerCase();
+  const shouldRetryWithoutTags =
+    !!error &&
+    (msg.includes('p_tags') ||
+      msg.includes('function search_services_unanchored') ||
+      msg.includes('could not find the function'));
+
+  // Backward compatibility for prod environments where sql/27_search_unanchored_tags.sql
+  // (adds p_tags) has not been run yet — PostgREST rejects the WHOLE call on signature
+  // mismatch (not just the tag filter), so without this retry Tier 3 would return 0 for
+  // every query, not just tag-filtered ones. Same pattern as searchServices()'s
+  // p_borough retry above.
+  if (shouldRetryWithoutTags) {
+    const legacy = await supabase.rpc('search_services_unanchored', baseArgs);
+    data = legacy.data as unknown[] | null;
+    error = legacy.error;
+  }
+
+  if (error || !data) return [];
+  return (Array.isArray(data) ? data : []).map((row) =>
+    mapRowToUnanchoredService(row as UnanchoredSearchRow)
+  );
+}
+
+export type FallbackNotice = { tier: 2 | 3; message: string; city?: string } | null;
+
+export type SearchWithFallbackResult = {
+  results: RankedService[];
+  unanchoredResults: UnanchoredService[];
+  fallbackNotice: FallbackNotice;
+};
+
+// Orkestrerer Tier 1 → 2 → 3, stopper ved første treff. Rekoordineringen i Tier 2 er
+// 100% intern her — lekker aldri til LocationContext eller lagret lokasjon.
+export async function searchServicesWithFallback(
+  params: SearchParams
+): Promise<SearchWithFallbackResult> {
+  if (!params.query) {
+    const results = await searchServices(params);
+    return { results, unanchoredResults: [], fallbackNotice: null };
+  }
+
+  // Tier 1 — uendret, lokasjonsforankret søk
+  const tier1Results = await searchServices(params);
+  if (tier1Results.length > 0) {
+    return { results: tier1Results, unanchoredResults: [], fallbackNotice: null };
+  }
+
+  // Tier 2 — flytt søkeområde til et stedsnavn funnet i søketeksten
+  const settlement = await findSettlementInQuery(params.query);
+  if (settlement) {
+    const tier2Results = await searchServices({
+      ...params,
+      lat: settlement.lat,
+      lon: settlement.lon,
+      city: settlement.name.toLowerCase(),
+      // Tomt remainder (hele query var stedsnavnet) skal gi et rent lokasjons+tag-søk i
+      // det nye stedet — IKKE et nytt tekstsøk på selve stedsnavnet (params.query), som
+      // ofte feiler trigram-likhet mot search_text og maskerer reelle treff.
+      query: settlement.remainder || undefined,
+    });
+    if (tier2Results.length > 0) {
+      return {
+        results: tier2Results,
+        unanchoredResults: [],
+        fallbackNotice: {
+          tier: 2,
+          message: `Fant ingen treff nær deg — viser resultater i ${settlement.name} i stedet`,
+          city: settlement.name,
+        },
+      };
+    }
+  }
+
+  // Tier 3 — frittstående navnetreff, ingen dekningsbegrensning
+  const unanchoredResults = await searchServicesUnanchored({
+    query: params.query,
+    lat: params.lat,
+    lon: params.lon,
+    tags: params.tags,
+    limit: params.limit,
+  });
+  if (unanchoredResults.length > 0) {
+    return {
+      results: [],
+      unanchoredResults,
+      fallbackNotice: { tier: 3, message: 'Disse resultatene ligger utenfor ditt område' },
+    };
+  }
+
+  return { results: [], unanchoredResults: [], fallbackNotice: null };
 }

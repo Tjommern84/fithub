@@ -4,7 +4,8 @@ export type MainCategory =
   | 'oppfolging'
   | 'aktivitet-sport'
   | 'helse'
-  | 'paraidrett';
+  | 'paraidrett'
+  | 'utendors';
 
 export type TagOption = { label: string; value: string };
 
@@ -34,7 +35,7 @@ export type CategoryConfig = {
 export const CATEGORIES: CategoryConfig[] = [
   {
     key: 'trene-selv',
-    label: 'Trene selv',
+    label: 'Egentrening',
     description: 'Tuftepark, treningssenter og egentrening',
     tags: [
       { label: 'Styrke',    value: 'styrke' },
@@ -61,7 +62,7 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     key: 'trene-sammen',
-    label: 'Trene sammen',
+    label: 'Gruppetime',
     description: 'Gruppetimer, yoga, bootcamp og fellesøvelser',
     tags: [
       { label: 'Gruppe',     value: 'gruppe' },
@@ -148,13 +149,11 @@ export const CATEGORIES: CategoryConfig[] = [
   },
   {
     key: 'aktivitet-sport',
-    label: 'Aktivitet & sport',
-    description: 'Idrettslag, friluft og naturbasert aktivitet',
+    label: 'Sport',
+    description: 'Idrettslag og sportsklubber i hele Norge',
     tags: [
-      { label: 'Utetrening',  value: 'utetrening' },
       { label: 'Fotball',     value: 'fotball' },
       { label: 'Klatring',    value: 'klatring' },
-      { label: 'Tuftepark',   value: 'tuftepark' },
       { label: 'Ski',         value: 'ski' },
       { label: 'Tennis',      value: 'tennis' },
       { label: 'Golf',        value: 'golf' },
@@ -165,7 +164,6 @@ export const CATEGORIES: CategoryConfig[] = [
       { label: 'Friidrett',   value: 'friidrett' },
       { label: 'Orientering', value: 'orientering' },
       { label: 'Kampsport',   value: 'kampsport' },
-      { label: 'Paraidrett',  value: 'paraidrett' },
       { label: 'Svømming',    value: 'svomming' },
     ],
     theme: {
@@ -181,7 +179,7 @@ export const CATEGORIES: CategoryConfig[] = [
     accent: 'from-emerald-300/60 via-teal-300/40 to-cyan-300/30',
     images: [
       '/bilder/Idrettslag%20%26%20Sport/pexels-micaasato-1198172.webp',
-      '/bilder/Outdoor/pexels-rdne-5837154.webp',
+      '/bilder/Idrettslag%20%26%20Sport/pexels-pspov-3046582.webp',
       '/bilder/Idrettslag%20%26%20Sport/pexels-pavel-danilyuk-6203514.webp',
     ],
     serviceTypes: ['sport'],
@@ -207,21 +205,49 @@ export const CATEGORIES: CategoryConfig[] = [
     },
     accent: 'from-blue-300/60 via-sky-300/40 to-cyan-300/30',
     images: [
-      '/bilder/Idrettslag%20%26%20Sport/pexels-pspov-3046582.webp',
-      '/bilder/Outdoor/pexels-rdne-5837154.webp',
-      '/bilder/Idrettslag%20%26%20Sport/pexels-pavel-danilyuk-6203514.webp',
+      '/bilder/HC/pexels-andrew-mcmurtrie-2303639-3997914.webp',
+      '/bilder/HC/pexels-kampus-6763808.webp',
+      '/bilder/HC/pexels-mikhail-nilov-7697828.webp',
     ],
     serviceTypes: ['sport'],
+  },
+  {
+    key: 'utendors',
+    label: 'Utendørs',
+    description: 'Tuftepark, utetrening og friluftsliv',
+    tags: [
+      { label: 'Tuftepark',   value: 'tuftepark' },
+      { label: 'Utetrening',  value: 'utetrening' },
+      { label: 'Fellestimer', value: 'fellestimer' },
+    ],
+    theme: {
+      accent:     '#16A34A',
+      headerBg:   '#0A1A0E',
+      titleColor: '#A7F3C0',
+      subColor:   '#6EE7A0',
+      badgeBg:    '#DCFCE7',
+      badgeText:  '#14532D',
+      barStart:   '#15803D',
+      barEnd:     '#4ADE80',
+    },
+    accent: 'from-green-300/60 via-emerald-300/40 to-teal-300/30',
+    images: [
+      '/bilder/Outdoor/pexels-rdne-5837154.webp',
+      '/bilder/Outdoor/pexels-rdne-8402245.webp',
+      '/bilder/Outdoor/pexels-rui-dias-469842-1472887.webp',
+    ],
+    serviceTypes: ['outdoor'],
   },
 ];
 
 export const CATEGORY_LABELS: Record<MainCategory, string> = {
-  'trene-selv': 'Trene selv',
-  'trene-sammen': 'Trene sammen',
+  'trene-selv': 'Egentrening',
+  'trene-sammen': 'Gruppetime',
   oppfolging: 'Oppfølging & coaching',
-  'aktivitet-sport': 'Aktivitet & sport',
+  'aktivitet-sport': 'Sport',
   helse: 'Helse & behandling',
   paraidrett: 'Paraidrett',
+  utendors: 'Utendørs',
 };
 
 export function getCategoryConfig(key: string): CategoryConfig | undefined {
@@ -235,7 +261,8 @@ export function parseMainCategory(value: string): MainCategory | null {
     value === 'oppfolging' ||
     value === 'aktivitet-sport' ||
     value === 'helse' ||
-    value === 'paraidrett'
+    value === 'paraidrett' ||
+    value === 'utendors'
   ) {
     return value;
   }

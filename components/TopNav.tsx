@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import AuthButton from './AuthButton';
-import LocationBar from './LocationBar';
+import SearchLocationBar from './SearchLocationBar';
 import { container } from '../lib/ui';
 
 export default function TopNav() {
@@ -18,7 +18,7 @@ export default function TopNav() {
 
       {/* Rad 2: lokasjonssøk — full bredde */}
       <div className={`${container} pb-3`}>
-        <LocationBar />
+        <SearchLocationBar />
       </div>
     </header>
   );

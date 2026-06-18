@@ -10,7 +10,6 @@ export type LocationState = {
   lon: number;
   source: 'gps' | 'search' | 'saved';
   radius: RadiusKm;
-  bydel?: string | null;
 };
 
 type ContextValue = {

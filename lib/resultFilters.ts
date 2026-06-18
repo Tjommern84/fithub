@@ -137,10 +137,13 @@ export function parseVenue(value: string | null): VenuePreference {
 export const relatedGoalsDefault: Goal[] = ['strength', 'weight_loss', 'start', 'mobility', 'endurance'];
 
 export const categoryLabels: Record<string, string> = {
-  'trene-selv': 'Trene selv',
-  'trene-sammen': 'Trene sammen',
+  'trene-selv': 'Egentrening',
+  'trene-sammen': 'Gruppetime',
   oppfolging: 'Oppfølging & coaching',
-  'aktivitet-sport': 'Aktivitet & sport',
+  'aktivitet-sport': 'Sport',
+  helse: 'Helse & behandling',
+  paraidrett: 'Paraidrett',
+  utendors: 'Utendørs',
 };
 
 export type ResultsFilters = {

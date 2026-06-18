@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { cityCoordinates, normalizeCity } from '../../lib/matching';
 import type { RankedService } from '../../lib/matching';
 import { geocodeNorwegianCity } from '../../lib/geocode';
-import { searchServices } from '../../lib/matchingDb';
+import { searchServicesWithFallback } from '../../lib/matchingDb';
+import type { UnanchoredService, FallbackNotice } from '../../lib/matchingDb';
 import { parseServiceType, parseSort, parseVenue } from '../../lib/resultFilters';
 import { parseMainCategory, CATEGORY_LABELS, getCategoryConfig } from '../../lib/categoryConfig';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
@@ -70,9 +71,6 @@ export default async function ResultsPage({
   const rawVenue   = typeof searchParams.venue    === 'string' ? searchParams.venue    : '';
   const rawLocation = typeof searchParams.location === 'string' ? searchParams.location : '';
   const rawCity    = typeof searchParams.city     === 'string' ? searchParams.city     : '';
-  const rawBorough = typeof searchParams.bydel    === 'string'
-    ? searchParams.bydel
-    : typeof searchParams.borough === 'string' ? searchParams.borough : '';
   const rawSort   = typeof searchParams.sort   === 'string' ? searchParams.sort   : '';
   const rawQuery  = typeof searchParams.q      === 'string' ? searchParams.q      : '';
   const rawRadius = typeof searchParams.radius === 'string' ? parseInt(searchParams.radius, 10) : NaN;
@@ -128,6 +126,8 @@ export default async function ResultsPage({
   // ── Fetch results ─────────────────────────────────────────────────────────
 
   let results: RankedService[] = [];
+  let unanchoredResults: UnanchoredService[] = [];
+  let fallbackNotice: FallbackNotice = null;
   let groupSessions: GroupSession[] = [];
   let fetchError: string | null = null;
 
@@ -158,14 +158,21 @@ export default async function ResultsPage({
         page,
       };
 
-      const fetches: [Promise<RankedService[]>, Promise<GroupSession[]>] = [
-        searchServices(baseParams),
+      const fetches: [
+        ReturnType<typeof searchServicesWithFallback>,
+        Promise<GroupSession[]>
+      ] = [
+        searchServicesWithFallback(baseParams),
         mainCategory === 'trene-sammen'
           ? fetchGroupSessions({ lat, lon, city: resolvedCity, radiusKm, tags: tagsArray.length > 0 ? tagsArray : undefined })
           : Promise.resolve([]),
       ];
 
-      [results, groupSessions] = await Promise.all(fetches);
+      const [searchResult, sessions] = await Promise.all(fetches);
+      results = searchResult.results;
+      unanchoredResults = searchResult.unanchoredResults;
+      fallbackNotice = searchResult.fallbackNotice;
+      groupSessions = sessions;
     } catch (err) {
       console.error('[ResultsPage] searchServices failed:', err);
       if (err instanceof Error) {
@@ -212,7 +219,7 @@ export default async function ResultsPage({
             </h1>
             {locationLabel && (
               <p className="mt-1 text-sm" style={{ color: catTheme.subColor }}>
-                Nær {locationLabel}{rawBorough ? ` · ${rawBorough}` : ''}
+                Nær {locationLabel}
               </p>
             )}
           </div>
@@ -235,6 +242,8 @@ export default async function ResultsPage({
         ) : (
           <ResultsView
             results={results}
+            unanchoredResults={unanchoredResults}
+            fallbackNotice={fallbackNotice}
             groupSessions={groupSessions}
             categoryLabel={categoryLabel}
             locationLabel={locationLabel}

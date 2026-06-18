@@ -6,16 +6,20 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { RankedService } from '../../lib/matching';
+import type { UnanchoredService, FallbackNotice } from '../../lib/matchingDb';
 import { serviceTypeLabels } from '../../lib/resultFilters';
 import { CATEGORIES } from '../../lib/categoryConfig';
 import type { CategoryConfig } from '../../lib/categoryConfig';
 import type { GroupSession } from '../../lib/groupSessions';
 import GroupSessionCard from '../../components/GroupSessionCard';
+import { useLocation } from '../../lib/locationContext';
 
 const ServiceMap = dynamic(() => import('../../components/ServiceMap'), { ssr: false });
 
 type Props = {
   results: RankedService[];
+  unanchoredResults?: UnanchoredService[];
+  fallbackNotice?: FallbackNotice;
   groupSessions?: GroupSession[];
   categoryLabel: string;
   locationLabel: string | null;
@@ -26,7 +30,44 @@ type Props = {
   pageSize?: number;
 };
 
-function ServiceCard({ item, searchQueryString }: { item: RankedService; searchQueryString: string }) {
+type SearchHereCoords = { lat: number; lon: number; label: string; city: string | null };
+type SearchHereFn = (coords: SearchHereCoords) => void;
+
+function SearchHereButton({
+  lat,
+  lon,
+  label,
+  city,
+  onSearchHere,
+}: {
+  lat: number;
+  lon: number;
+  label: string;
+  city: string | null;
+  onSearchHere?: SearchHereFn;
+}) {
+  if (!onSearchHere) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => onSearchHere({ lat, lon, label, city })}
+      title="Søk her i stedet"
+      className="text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors"
+    >
+      📍 Søk her i stedet
+    </button>
+  );
+}
+
+function ServiceCard({
+  item,
+  searchQueryString,
+  onSearchHere,
+}: {
+  item: RankedService;
+  searchQueryString: string;
+  onSearchHere?: SearchHereFn;
+}) {
   const { service } = item;
   const typeLabel =
     (serviceTypeLabels as Record<string, string>)[service.type] ?? service.type;
@@ -138,13 +179,22 @@ function ServiceCard({ item, searchQueryString }: { item: RankedService; searchQ
         </div>
       )}
 
-      <div className="mt-4 pt-3 border-t border-slate-100">
+      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
         <Link
           href={profileHref}
           className="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors"
         >
           Se full profil →
         </Link>
+        {item.lat != null && item.lon != null && (
+          <SearchHereButton
+            lat={item.lat}
+            lon={item.lon}
+            label={service.city ?? service.name}
+            city={service.city ?? null}
+            onSearchHere={onSearchHere}
+          />
+        )}
       </div>
 
       <script
@@ -173,6 +223,138 @@ function ServiceCard({ item, searchQueryString }: { item: RankedService; searchQ
         }}
       />
       </div>
+    </div>
+  );
+}
+
+function UnanchoredServiceCard({
+  item,
+  searchQueryString,
+  onSearchHere,
+}: {
+  item: UnanchoredService;
+  searchQueryString: string;
+  onSearchHere?: SearchHereFn;
+}) {
+  const typeLabel = (serviceTypeLabels as Record<string, string>)[item.type] ?? item.type;
+  const profileHref = `/tilbyder/${item.id}${searchQueryString ? `?${searchQueryString}` : ''}`;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      {item.cover_image_url && (
+        <Link href={profileHref} className="relative block h-28 w-full overflow-hidden">
+          <Image
+            src={item.cover_image_url}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, 50vw"
+            className="object-cover transition-transform hover:scale-105"
+          />
+        </Link>
+      )}
+      <div className="p-5">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              {item.logo_image_url && (
+                <Image
+                  src={item.logo_image_url}
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="rounded-full object-cover shrink-0 border border-slate-100"
+                />
+              )}
+              <Link
+                href={profileHref}
+                className="font-semibold text-slate-900 text-base leading-snug hover:text-rose-700 transition-colors"
+              >
+                {item.name}
+              </Link>
+            </div>
+            {item.description && (
+              <p className="mt-1 text-sm text-slate-500 line-clamp-2">{item.description}</p>
+            )}
+          </div>
+          <span className="shrink-0 mt-1 sm:mt-0 text-xs font-medium text-slate-400">
+            {typeLabel}
+          </span>
+        </div>
+
+        {/* Badges — nøytral/amber stil, IKKE samme palett som matchReason-badgen */}
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+            📍 Utenfor ditt område{item.city ? ` — ${item.city}` : ''}
+          </span>
+          {item.rating_avg > 0 && (
+            <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+              ★ {item.rating_avg.toFixed(1)}
+            </span>
+          )}
+        </div>
+
+        {(item.address || item.phone || item.email || item.website) && (
+          <div className="mt-3 space-y-0.5 text-xs text-slate-500">
+            {item.address && <p>📍 {item.address}</p>}
+            {item.phone && (
+              <p>
+                📞{' '}
+                <a href={`tel:+47${item.phone}`} className="hover:underline hover:text-slate-700">
+                  {item.phone}
+                </a>
+              </p>
+            )}
+            {item.email && (
+              <p>
+                ✉️{' '}
+                <a href={`mailto:${item.email}`} className="hover:underline hover:text-slate-700">
+                  {item.email}
+                </a>
+              </p>
+            )}
+            {item.website && (
+              <p>
+                🌐{' '}
+                <a
+                  href={item.website.startsWith('http') ? item.website : `https://${item.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline hover:text-slate-700"
+                >
+                  {item.website.replace(/^https?:\/\//, '')}
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
+          <Link
+            href={profileHref}
+            className="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors"
+          >
+            Se full profil →
+          </Link>
+          {item.lat != null && item.lon != null && (
+            <SearchHereButton
+              lat={item.lat}
+              lon={item.lon}
+              label={item.city ?? item.name}
+              city={item.city}
+              onSearchHere={onSearchHere}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FallbackNoticeBanner({ notice }: { notice: FallbackNotice }) {
+  if (!notice || notice.tier !== 2) return null;
+  return (
+    <div className="mb-6 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+      ℹ️ {notice.message}
     </div>
   );
 }
@@ -211,6 +393,7 @@ function ResultSection({
   nextPageUrl,
   currentPage,
   searchQueryString,
+  onSearchHere,
 }: {
   title: string;
   items: RankedService[];
@@ -218,13 +401,19 @@ function ResultSection({
   nextPageUrl?: string;
   currentPage?: number;
   searchQueryString: string;
+  onSearchHere?: SearchHereFn;
 }) {
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-700 mb-3">{title}</h2>
       <div className="space-y-3">
         {items.map((item) => (
-          <ServiceCard key={item.service.id} item={item} searchQueryString={searchQueryString} />
+          <ServiceCard
+            key={item.service.id}
+            item={item}
+            searchQueryString={searchQueryString}
+            onSearchHere={onSearchHere}
+          />
         ))}
       </div>
       {(prevPageUrl || nextPageUrl) && (
@@ -343,6 +532,8 @@ function EmptyState({
 
 export default function ResultsView({
   results,
+  unanchoredResults = [],
+  fallbackNotice = null,
   groupSessions = [],
   categoryLabel,
   locationLabel,
@@ -354,26 +545,7 @@ export default function ResultsView({
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const currentQuery = searchParams.get('q') ?? '';
-  const [inputQuery, setInputQuery] = useState(currentQuery);
-
-  useEffect(() => {
-    setInputQuery(searchParams.get('q') ?? '');
-  }, [searchParams]);
-
-  const handleSearchSubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      const params = new URLSearchParams(searchParams.toString());
-      const q = inputQuery.trim();
-      if (q) params.set('q', q);
-      else params.delete('q');
-      params.delete('page');
-      router.push(`/resultater?${params.toString()}`);
-    },
-    [inputQuery, searchParams, router]
-  );
+  const { location, setLocation } = useLocation();
 
   // Fire-and-forget: background city refresh (24hr cooldown enforced server-side)
   useEffect(() => {
@@ -433,6 +605,29 @@ export default function ResultsView({
     [router, searchParams]
   );
 
+  const handleSearchHere = useCallback(
+    (coords: SearchHereCoords) => {
+      setLocation({
+        label: coords.label,
+        city: coords.city,
+        lat: coords.lat,
+        lon: coords.lon,
+        source: 'search',
+        radius: location?.radius ?? 10,
+      });
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete('q');
+      params.delete('page');
+      params.set('lat', String(coords.lat));
+      params.set('lon', String(coords.lon));
+      params.set('location', coords.label);
+      if (coords.city) params.set('city', coords.city);
+      else params.delete('city');
+      router.push(`/resultater?${params.toString()}`);
+    },
+    [location, searchParams, router, setLocation]
+  );
+
   const hasResults = results.length > 0;
   const hasSessions = groupSessions.length > 0;
   const hasNextPage = results.length === pageSize;
@@ -449,39 +644,6 @@ export default function ResultsView({
 
   return (
     <div>
-      {/* Search bar */}
-      <form className="mb-5" onSubmit={handleSearchSubmit}>
-        <div className="relative">
-          <input
-            type="search"
-            value={inputQuery}
-            onChange={(e) => setInputQuery(e.target.value)}
-            placeholder="Søk på navn, sted eller type…"
-            className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-4 pr-24 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-400"
-          />
-          <button
-            type="submit"
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-rose-700"
-          >
-            {currentQuery ? 'Oppdater' : 'Søk'}
-          </button>
-        </div>
-        {currentQuery && (
-          <button
-            type="button"
-            onClick={() => {
-              const params = new URLSearchParams(searchParams.toString());
-              params.delete('q');
-              params.delete('page');
-              router.push(`/resultater?${params.toString()}`);
-            }}
-            className="mt-1.5 text-xs text-slate-400 hover:text-slate-600"
-          >
-            × Fjern søk «{currentQuery}»
-          </button>
-        )}
-      </form>
-
       {/* Tag filter panel */}
       {catConfig ? (
         <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -581,6 +743,8 @@ export default function ResultsView({
         </div>
       )}
 
+      <FallbackNoticeBanner notice={fallbackNotice} />
+
       <div className={`space-y-10 ${view === 'map' && hasCoords ? 'hidden sm:block' : ''}`}>
         {/* Group sessions section */}
         {hasSessions && (
@@ -612,10 +776,29 @@ export default function ResultsView({
             nextPageUrl={nextPageUrl}
             currentPage={currentPage}
             searchQueryString={searchParams.toString()}
+            onSearchHere={handleSearchHere}
           />
         )}
 
-        {!hasResults && !hasSessions && (
+        {unanchoredResults.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold text-slate-700 mb-3">
+              Andre treff (utenfor ditt område)
+            </h2>
+            <div className="space-y-3">
+              {unanchoredResults.map((item) => (
+                <UnanchoredServiceCard
+                  key={item.id}
+                  item={item}
+                  searchQueryString={searchParams.toString()}
+                  onSearchHere={handleSearchHere}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!hasResults && !hasSessions && unanchoredResults.length === 0 && (
           <EmptyState
             searchParams={searchParams}
             catConfig={catConfig}

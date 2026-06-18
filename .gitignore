@@ -47,9 +47,19 @@ data/*.tsv
 data/*.csv
 data/*.png
 data/scraped/
+data/*.ndjson
+data/geonorge/
+data/wikipedia/
 
 # Keep reference data used by build scripts
 !data/reference/
+
+# Raw source downloads for import scripts (large, regenerated on demand)
+filer/
+
+# Scratch/personal files, not part of the codebase
+tilbakemeldinger/
+ressurser/*.xlsx
 
 # One-off dedup/debug artifacts
 images/

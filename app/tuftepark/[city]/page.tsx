@@ -69,7 +69,7 @@ export default async function TufteparkCityPage({
     // vis tom side heller enn å krasje
   }
 
-  const resultsUrl = `/resultater?cat=aktivitet-sport&tags=tuftepark&location=${encodeURIComponent(displayCity)}&lat=${coords.lat}&lon=${coords.lon}`;
+  const resultsUrl = `/resultater?cat=utendors&tags=tuftepark&location=${encodeURIComponent(displayCity)}&lat=${coords.lat}&lon=${coords.lon}`;
 
   const breadcrumbLd = {
     '@context': 'https://schema.org',
@@ -225,7 +225,7 @@ export default async function TufteparkCityPage({
           <p className="mt-3 text-sm text-green-700">
             Vil du trene med en gruppe eller ha veiledning?{' '}
             <Link
-              href={`/resultater?cat=trene-sammen&tags=utetrening&location=${encodeURIComponent(displayCity)}&lat=${coords.lat}&lon=${coords.lon}`}
+              href={`/resultater?cat=utendors&tags=utetrening&location=${encodeURIComponent(displayCity)}&lat=${coords.lat}&lon=${coords.lon}`}
               className="font-medium underline"
             >
               Se utendørs gruppetrening i {displayCity}
