@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import AuthButton from './AuthButton';
 import SearchLocationBar from './SearchLocationBar';
 import { container } from '../lib/ui';
@@ -18,7 +19,9 @@ export default function TopNav() {
 
       {/* Rad 2: lokasjonssøk — full bredde */}
       <div className={`${container} pb-3`}>
-        <SearchLocationBar />
+        <Suspense fallback={<div className="h-10" />}>
+          <SearchLocationBar />
+        </Suspense>
       </div>
     </header>
   );
