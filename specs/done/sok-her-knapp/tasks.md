@@ -2,7 +2,7 @@
 
 ## Backend
 - [x] Opprett `sql/27_search_unanchored_tags.sql`: `DROP FUNCTION IF EXISTS` (gammel signatur) + `CREATE OR REPLACE` med ny `p_tags text[] DEFAULT NULL`-parameter (basert på den allerede fiksede `word_similarity()`-kroppen fra `sql/24`, ikke originalversjonen) + `GRANT EXECUTE` (ny signatur)
-- [ ] Bruker kjører filen i Supabase SQL Editor
+- [x] Bruker kjørte filen i Supabase SQL Editor (bekreftet 2026-06-19, "27 er kjørt uten problem")
 
 ## Frontend
 - [x] `lib/matchingDb.ts`: Bugfiks A — Tier 2 bruker `settlement.remainder || undefined` i stedet for `|| params.query`
@@ -19,7 +19,7 @@
 - [x] Manuell test: bekreftet via curl/node (ikke browser — krever klikk-simulering) at: (1) destinasjons-URL-mønsteret laster korrekt med riktig kategori/tags/radius bevart og nytt lat/lon/location/city, (2) Bugfiks A gir et reelt Tier 2-treff (50 sportsklubber i Drammen, banner vist) for `cat=aktivitet-sport&q=Drammen` — første ekte Tier-2-suksess observert i dette prosjektet (tidligere sesjoner falt alltid videre til Tier 3), (3) Tier 3 fortsatt fungerer for "yoga drammen" etter retry-fiksen. Selve knappeklikket og brukerens fulle scenario (Drammen → Søk her i stedet → huk av Ishockey) krever en ekte browser for å verifisere visuelt
 
 ## PM / Avslutning
-- [ ] Sjekke mot suksesskriterier i proposal.md
-- [ ] Oppdatere CLAUDE.md
-- [ ] Arkivere spec til specs/done/
-- [ ] Oppdatere handoff.md med "feature fullført"
+- [x] Sjekke mot suksesskriterier i proposal.md
+- [x] Oppdatere CLAUDE.md
+- [x] Arkivere spec til specs/done/
+- [x] Oppdatere handoff.md med "feature fullført"

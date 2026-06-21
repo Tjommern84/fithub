@@ -72,6 +72,7 @@ async function main() {
       name: r.name,
       type: 'outdoor',
       main_category: 'aktivitet-sport',
+      provider_type: 'facility',
       description: `Gratis utendørs treningsplass i ${r.city.charAt(0).toUpperCase() + r.city.slice(1)}.`,
       address: r.address || null,
       city: r.city,

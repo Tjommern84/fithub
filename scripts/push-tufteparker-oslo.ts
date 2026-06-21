@@ -68,6 +68,7 @@ async function main() {
       name: park.name,
       type: 'outdoor',
       main_category: 'aktivitet-sport',
+      provider_type: 'facility',
       description,
       address: park.address,
       city: 'oslo',

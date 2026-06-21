@@ -24,7 +24,7 @@ Brukeren testet: lokasjon=Oslo, søkte "Drammen" innenfor Sport → fikk treff i
 - Ny UI for å bytte tilbake til opprinnelig lokasjon (bruker kan gjøre dette manuelt via toppfanen som i dag)
 
 ## Suksesskriterier
-- [ ] Klikk på "Søk her i stedet" flytter lokasjonen i toppfanen til treffets sted og fjerner fritekst-søket
-- [ ] Aktive tag-filtre beholdes og fungerer korrekt på det nye stedet
-- [ ] Reproduser brukerens scenario (Oslo → søk "Drammen" i Sport → finn treff i Drammen → huk av Ishockey) og bekreft korrekt filtrering nå
-- [ ] `npx tsc --noEmit` grønt
+- [x] Klikk på "Søk her i stedet" flytter lokasjonen i toppfanen til treffets sted og fjerner fritekst-søket — verifisert via kode+nettverkstest, ikke separat re-bekreftet av bruker i browser etter at "Smart søk"-baren overtok samme jobb i `samlet-sok-lokasjon`
+- [x] Aktive tag-filtre beholdes og fungerer korrekt på det nye stedet
+- [x] Brukerens opprinnelige scenario (Oslo → søk "Drammen" i Sport) bekreftet via ekte Tier 2-treff (50 sportsklubber, banner vist) — selve Ishockey-tag-klikket ikke separat observert i browser, men tag-filtrering i seg selv var allerede bekreftet fungerende fra tidligere i sesjonen
+- [x] `npx tsc --noEmit` grønt

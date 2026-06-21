@@ -30,4 +30,4 @@ Tre separate tekstfelt i appen er forvirrende. Adressepresisjon må bevares (opp
 - [x] Vanlig flyt (Smart søk AV): kategori-flis + tag-checkbox-filtrering uendret kode
 - [x] Oslo-bydel-velger og "Endre"-knapp er borte, 0 gjenværende `bydel`-referanser (utenom `lib/osloBoroughs.ts`, urelatert)
 - [x] `npx tsc --noEmit` grønt
-- [ ] Første besøk uten lagret lokasjon: Oslo vises som standard, GPS-prompt vises samtidig — krever klient-side hydrering, ikke verifiserbar med curl. Venter på bruker sin visuelle test
+- [x] Første besøk uten lagret lokasjon: Oslo vises som standard, GPS-prompt vises samtidig — bekreftet av bruker ("konge")

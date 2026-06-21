@@ -20,8 +20,8 @@ Legg til en 8. flis på forsiden som lenker til `/tur` (turruter + tettsteder-ka
 - Endring av `/tur`-siden selv
 
 ## Suksesskriterier
-- [ ] 8 fliser vises i et jevnt 4×2-grid, ingen flis spenner 2 kolonner
-- [ ] Tur-flisen bruker bildene fra `public/bilder/tur/`, med samme hover/touch-cycling som de andre
-- [ ] Tur-flisen er klikkbar og navigerer til `/tur` UTEN at lokasjon må være satt først
-- [ ] De 7 eksisterende kategori-flisene er visuelt og funksjonelt uendret
-- [ ] `npx tsc --noEmit` grønt
+- [x] 8 fliser vises i et jevnt 4×2-grid, ingen flis spenner 2 kolonner — bekreftet i rendret HTML
+- [x] Tur-flisen bruker bildene fra `public/bilder/tur/`, med samme hover/touch-cycling som de andre (uendret `CategoryCard`-komponent)
+- [x] Tur-flisen er klikkbar og navigerer til `/tur` UTEN at lokasjon må være satt først — `disabled:false` bekreftet programmatisk
+- [x] De 7 eksisterende kategori-flisene er visuelt og funksjonelt uendret
+- [x] `npx tsc --noEmit` grønt

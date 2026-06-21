@@ -200,7 +200,7 @@ export default function DashboardPage() {
                   Rediger profil
                 </Link>
                 <Link
-                  href={`/tilbyder/${service.id}`}
+                  href={`/tilbyder/${encodeURIComponent(service.id)}`}
                   className="text-sm font-medium text-slate-500 hover:text-slate-700"
                 >
                   Se offentlig profil →

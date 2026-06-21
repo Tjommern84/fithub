@@ -1,6 +1,8 @@
 ﻿'use server';
 
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
+import { headers } from 'next/headers';
 import { sendEmail, isEmailConfigured } from '../../../lib/emailClient';
 import { logError } from '../../../lib/errorLogger';
 import { wrapServerAction } from '../../../lib/actionWrapper';
@@ -13,6 +15,7 @@ import { isStripeConfigured } from '../../../lib/stripe';
 import { getOrgSubscriptionStatusForUser, recordOrgLead } from '../../../lib/organizations';
 import { invalidateServiceCaches } from '../../../lib/cacheInvalidation';
 import { getServiceSupabase } from '../../../lib/serviceSupabase';
+import { isRateLimited } from '../../../lib/rateLimit';
 
 export type LeadActionState = {
   ok: boolean;
@@ -591,7 +594,7 @@ export const submitReview = wrapServerAction('review_submit', submitReviewHandle
 
 export type ClaimWithOrgnrStatus = {
   ok: boolean;
-  status: 'claimed' | 'already_claimed' | 'not_found' | 'unauthorized' | 'orgnr_mismatch' | 'no_orgnr';
+  status: 'claimed' | 'already_claimed' | 'not_found' | 'unauthorized' | 'orgnr_mismatch' | 'no_orgnr' | 'facility';
   message: string;
 };
 
@@ -625,12 +628,21 @@ export async function claimServiceWithOrgnr(
 
   const { data: svc } = await supabase
     .from('services')
-    .select('id, name, orgnr, owner_user_id, email')
+    .select('id, name, orgnr, owner_user_id, email, provider_type')
     .eq('id', serviceId)
     .maybeSingle();
 
   if (!svc) {
     return { ok: false, status: 'not_found', message: 'Fant ikke tjenesten.' };
+  }
+  // Gate på provider_type FØR orgnr-sjekken — et anlegg har ingen tilbyder å verifisere,
+  // uavhengig av om/hvilken orgnr-verdi som måtte stå på raden.
+  if (svc.provider_type === 'facility') {
+    return {
+      ok: false,
+      status: 'facility',
+      message: 'Dette er et offentlig anlegg uten registrert tilbyder, og kan ikke kreves.',
+    };
   }
   if (svc.owner_user_id) {
     return { ok: false, status: 'already_claimed', message: 'Denne profilen er allerede verifisert av en annen bruker.' };
@@ -665,4 +677,79 @@ export async function claimServiceWithOrgnr(
   }
 
   return { ok: true, status: 'claimed', message: `${svc.name} er nå verifisert og koblet til kontoen din.` };
+}
+
+const getRequestIp = async (): Promise<string> => {
+  const headerList = await headers();
+  const forwarded = headerList.get('x-forwarded-for');
+  if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown';
+  return headerList.get('cf-connecting-ip') ?? 'unknown';
+};
+
+const hashIp = (ip: string): string => createHash('sha256').update(ip).digest('hex');
+
+export type ReportServiceResult = {
+  ok: boolean;
+  message: string;
+};
+
+export async function reportService(
+  serviceId: string,
+  reason: string
+): Promise<ReportServiceResult> {
+  if (!serviceId) {
+    return { ok: false, message: 'Ugyldig tjeneste.' };
+  }
+
+  const trimmedReason = reason.trim();
+  if (!trimmedReason) {
+    return { ok: false, message: 'Velg en årsak.' };
+  }
+
+  const ip = await getRequestIp();
+  if (isRateLimited(`report:${ip}`, 5, 60 * 60_000)) {
+    return { ok: false, message: 'Du har rapportert for mange ganger. Prøv igjen senere.' };
+  }
+
+  const serviceClient = getServiceSupabase();
+  if (!serviceClient) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
+  }
+
+  const reporterIpHash = hashIp(ip);
+
+  const { error: insertError } = await serviceClient.from('service_reports').insert({
+    service_id: serviceId,
+    reason: trimmedReason,
+    reporter_ip_hash: reporterIpHash,
+  });
+
+  if (insertError) {
+    await logError({
+      level: 'error',
+      source: 'server_action',
+      context: 'service_report_insert',
+      message: insertError.message ?? 'Kunne ikke lagre rapporten.',
+      metadata: { serviceId },
+    });
+    return { ok: false, message: 'Kunne ikke lagre rapporten.' };
+  }
+
+  const { error: updateError } = await serviceClient
+    .from('services')
+    .update({ reported_at: new Date().toISOString() })
+    .eq('id', serviceId);
+
+  if (updateError) {
+    await logError({
+      level: 'error',
+      source: 'server_action',
+      context: 'service_report_flag',
+      message: updateError.message ?? 'Kunne ikke flagge tjenesten.',
+      metadata: { serviceId },
+    });
+    return { ok: false, message: 'Kunne ikke flagge tjenesten.' };
+  }
+
+  return { ok: true, message: 'Takk for tilbakemeldingen! Vi ser på dette.' };
 }

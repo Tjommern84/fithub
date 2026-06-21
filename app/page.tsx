@@ -1,4 +1,7 @@
 import type { Metadata } from 'next';
+import HomeHero from '../components/home/HomeHero';
+import HomeValueProps from '../components/home/HomeValueProps';
+import HomeNearbyActivities from '../components/home/HomeNearbyActivities';
 import CategoryGrid from '../components/CategoryGrid';
 
 export const metadata: Metadata = {
@@ -30,8 +33,11 @@ const websiteLd = {
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#f7f4ef]">
+    <main className="bg-brand-beige">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
+      <HomeHero />
+      <HomeValueProps id="hvordan-funker-det" />
+      <HomeNearbyActivities />
       <CategoryGrid />
     </main>
   );

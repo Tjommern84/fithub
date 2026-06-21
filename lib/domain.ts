@@ -34,6 +34,7 @@ export type ServiceType =
   | 'ernæring'      // Kostholdsveiledning og ernæringsrådgivning
   | 'helse';        // Helse og velvære (solarium, kroppsanalyse, fotterapi)
 export type PriceLevel = 'low' | 'medium' | 'high';
+export type ProviderType = 'business' | 'facility';
 export type Goal =
   | 'weight_loss'
   | 'strength'
@@ -66,4 +67,5 @@ export type Service = {
   email?: string | null;
   website?: string | null;
   orgnr?: string | null;
+  provider_type?: ProviderType;
 };

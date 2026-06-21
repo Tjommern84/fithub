@@ -284,7 +284,7 @@ export default async function TrainingLandingPage({
             {topResults.map((item) => (
               <Link
                 key={item.service.id}
-                href={`/tilbyder/${item.service.id}?${resultsQuery}`}
+                href={`/tilbyder/${encodeURIComponent(item.service.id)}?${resultsQuery}`}
                 className="block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
               >
                 {item.service.cover_image_url && (

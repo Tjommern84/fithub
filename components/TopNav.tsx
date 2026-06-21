@@ -1,27 +1,40 @@
+import Image from 'next/image';
 import Link from 'next/link';
-import { Suspense } from 'react';
 import AuthButton from './AuthButton';
-import SearchLocationBar from './SearchLocationBar';
+import ConditionalSearchBar from './ConditionalSearchBar';
 import { container } from '../lib/ui';
 
 export default function TopNav() {
   return (
-    <header className="sticky top-0 z-header border-b border-slate-200 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-header border-b border-black/10 bg-brand-forest">
       {/* Rad 1: logo + navigasjon */}
-      <div className={`${container} flex h-12 items-center justify-between`}>
-        <Link href="/" className="shrink-0 text-sm font-semibold tracking-wide text-slate-900">
-          fithub.no
+      <div className={`${container} grid h-16 grid-cols-[auto_1fr_auto] items-center gap-4`}>
+        <Link href="/" className="flex shrink-0 items-center gap-3">
+          <Image src="/images/fithublogo.png" alt="" width={42} height={42} className="rounded-md" />
+          <span className="font-heading text-3xl font-bold tracking-wide text-white">fithub.no</span>
         </Link>
-        <div className="flex shrink-0 items-center gap-2">
+        <nav className="hidden items-center justify-center gap-6 md:flex">
+          <Link href="/resultater" className="text-2xl font-medium text-white/70 transition hover:text-white">
+            Utforsk aktiviteter
+          </Link>
+          <Link href="/tilbydere" className="text-2xl font-medium text-white/70 transition hover:text-white">
+            Tilbydere
+          </Link>
+          <Link href="/magasin" className="text-2xl font-medium text-white/70 transition hover:text-white">
+            Magasin
+          </Link>
+          <Link href="/om-oss" className="text-2xl font-medium text-white/70 transition hover:text-white">
+            Om oss
+          </Link>
+        </nav>
+        <div className="flex shrink-0 items-center justify-self-end gap-2">
           <AuthButton />
         </div>
       </div>
 
       {/* Rad 2: lokasjonssøk — full bredde */}
       <div className={`${container} pb-3`}>
-        <Suspense fallback={<div className="h-10" />}>
-          <SearchLocationBar />
-        </Suspense>
+        <ConditionalSearchBar />
       </div>
     </header>
   );

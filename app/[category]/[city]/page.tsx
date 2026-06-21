@@ -45,7 +45,7 @@ export async function generateMetadata({
 function ServiceCard({ item, resultsUrl }: { item: RankedService; resultsUrl: string }) {
   const { service } = item;
   const typeLabel = (serviceTypeLabels as Record<string, string>)[service.type] ?? service.type;
-  const profileHref = `/tilbyder/${service.id}?${new URLSearchParams({ from: resultsUrl }).toString()}`;
+  const profileHref = `/tilbyder/${encodeURIComponent(service.id)}?${new URLSearchParams({ from: resultsUrl }).toString()}`;
 
   const jsonLd = {
     '@context': 'https://schema.org',

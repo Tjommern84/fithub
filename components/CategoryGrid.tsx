@@ -250,9 +250,9 @@ export default function CategoryGrid() {
 
         {/* Heading */}
         <div className="mb-6">
-          <h1 className="font-heading text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
+          <h2 className="font-heading text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
             Finn lokale treningsmuligheter
-          </h1>
+          </h2>
           <p className="mt-2 max-w-xl text-base font-light text-slate-500">
             {location
               ? `Viser tilbud nær ${firstPart(location.label)}`

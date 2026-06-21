@@ -29,6 +29,7 @@ import { Button, ButtonLink } from '../../../components/ui/Button';
 import { Input, Textarea } from '../../../components/ui/Input';
 import { Card } from '../../../components/ui/Card';
 import { Chip } from '../../../components/ui/Chip';
+import ReportIssueModal from '../../../components/ReportIssueModal';
 import { container, input, label } from '../../../lib/ui';
 
 const goalLabels: Record<Goal, string> = {
@@ -183,6 +184,9 @@ export default function ProviderClient({ params, service: initialService, relate
   const modalHadOpenRef = useRef(false);
   const openRequestModal = useCallback(() => setRequestModalOpen(true), []);
   const closeRequestModal = useCallback(() => setRequestModalOpen(false), []);
+  const [isReportModalOpen, setReportModalOpen] = useState(false);
+  const openReportModal = useCallback(() => setReportModalOpen(true), []);
+  const closeReportModal = useCallback(() => setReportModalOpen(false), []);
   const openRequestModalWithTrigger = useCallback(
     (trigger: HTMLButtonElement) => {
       lastTriggerRef.current = trigger;
@@ -403,6 +407,7 @@ export default function ProviderClient({ params, service: initialService, relate
 
   const coverageLines = formatCoverage(service);
   const isServiceActive = service.is_active !== false;
+  const isFacility = service.provider_type === 'facility';
   const isOwner = Boolean(session?.user?.id && ownerUserId && session.user.id === ownerUserId);
   const localGoals = service.goals.slice(0, 3);
   const heroLogoInitials = service.name
@@ -581,96 +586,146 @@ export default function ProviderClient({ params, service: initialService, relate
             </div>
           </section>
 
-          {(service.phone || service.email || service.website || service.address) && (
+          {isFacility ? (
             <section className="mt-8">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                Kontakt
-              </h2>
-              <ul className="mt-3 space-y-2 text-sm text-slate-700">
-                {service.address && (
-                  <li className="flex items-start gap-2">
+              {service.address && (
+                <>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    Adresse
+                  </h2>
+                  <p className="mt-3 flex items-start gap-2 text-sm text-slate-700">
                     <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
                     {service.address}
-                  </li>
-                )}
-                {service.phone && (
-                  <li className="flex items-center gap-2">
-                    <span className="shrink-0 text-slate-400">📞</span>
-                    <a href={`tel:+47${service.phone}`} className="hover:underline">
-                      {service.phone}
-                    </a>
-                  </li>
-                )}
-                {service.email && (
-                  <li className="flex items-center gap-2">
-                    <span className="shrink-0 text-slate-400">✉️</span>
-                    <a href={`mailto:${service.email}`} className="hover:underline">
-                      {service.email}
-                    </a>
-                  </li>
-                )}
-                {service.website && (
-                  <li className="flex items-center gap-2">
-                    <span className="shrink-0 text-slate-400">🌐</span>
-                    <a
-                      href={service.website.startsWith('http') ? service.website : `https://${service.website}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:underline"
-                    >
-                      {service.website.replace(/^https?:\/\//, '')}
-                    </a>
-                  </li>
-                )}
-              </ul>
+                  </p>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(service.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-rose-600 hover:underline"
+                  >
+                    Åpne i Google Maps →
+                  </a>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={openReportModal}
+                className="mt-3 block text-xs font-medium text-slate-400 hover:text-slate-600"
+              >
+                Rapporter feil
+              </button>
+            </section>
+          ) : (
+            <section className="mt-8">
+              {(service.phone || service.email || service.website || service.address) && (
+                <>
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    Kontakt
+                  </h2>
+                  <ul className="mt-3 space-y-2 text-sm text-slate-700">
+                    {service.address && (
+                      <li className="flex items-start gap-2">
+                        <span className="mt-0.5 shrink-0 text-slate-400">📍</span>
+                        {service.address}
+                      </li>
+                    )}
+                    {service.phone && (
+                      <li className="flex items-center gap-2">
+                        <span className="shrink-0 text-slate-400">📞</span>
+                        <a href={`tel:+47${service.phone}`} className="hover:underline">
+                          {service.phone}
+                        </a>
+                      </li>
+                    )}
+                    {service.email && (
+                      <li className="flex items-center gap-2">
+                        <span className="shrink-0 text-slate-400">✉️</span>
+                        <a href={`mailto:${service.email}`} className="hover:underline">
+                          {service.email}
+                        </a>
+                      </li>
+                    )}
+                    {service.website && (
+                      <li className="flex items-center gap-2">
+                        <span className="shrink-0 text-slate-400">🌐</span>
+                        <a
+                          href={service.website.startsWith('http') ? service.website : `https://${service.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          {service.website.replace(/^https?:\/\//, '')}
+                        </a>
+                      </li>
+                    )}
+                  </ul>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={openReportModal}
+                className="mt-3 block text-xs font-medium text-slate-400 hover:text-slate-600"
+              >
+                Rapporter feil
+              </button>
             </section>
           )}
         </div>
 
-        {!ownerUserId && (
+        {isFacility ? (
           <Card className="mt-8 bg-slate-50">
-            <h2 className="text-sm font-semibold text-slate-900">
-              Er du ansvarlig for denne virksomheten?
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Verifiser profilen med org.nr. for å få tilgang til leads og dashbordet.
+            <p className="text-sm text-slate-600">
+              ℹ️ Dette er et offentlig tilgjengelig anlegg uten registrert tilbyder.
             </p>
-            <ButtonLink
-              href={`/tilbyder/krev/${service.id}`}
-              variant="secondary"
-              className="mt-4"
-            >
-              Verifiser profil
-            </ButtonLink>
           </Card>
+        ) : (
+          !ownerUserId && (
+            <Card className="mt-8 bg-slate-50">
+              <h2 className="text-sm font-semibold text-slate-900">
+                Er du ansvarlig for denne virksomheten?
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Verifiser profilen med org.nr. for å få tilgang til leads og dashbordet.
+              </p>
+              <ButtonLink
+                href={`/tilbyder/krev/${service.id}`}
+                variant="secondary"
+                className="mt-4"
+              >
+                Verifiser profil
+              </ButtonLink>
+            </Card>
+          )
         )}
       </Card>
 
-      <Card className="mt-10 p-8">
-        <div className="flex flex-col gap-4">
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-slate-900">Send forespørsel</h2>
-            <p className="mt-2 text-sm text-slate-600">
-              Fortell kort om behovet ditt, så lagrer vi forespørselen din.
-            </p>
-            <p className="text-xs text-slate-500">
-              Dette er bare en forespørsel - ikke en bestilling.
-            </p>
+      {!isFacility && (
+        <Card className="mt-10 p-8">
+          <div className="flex flex-col gap-4">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-slate-900">Send forespørsel</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Fortell kort om behovet ditt, så lagrer vi forespørselen din.
+              </p>
+              <p className="text-xs text-slate-500">
+                Dette er bare en forespørsel - ikke en bestilling.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-slate-600">
+                Trykk på «Send forespørsel» nederst for å åpne skjemaet.
+              </p>
+              <Button
+                type="button"
+                className="hidden min-h-[48px] md:inline-flex"
+                onClick={handleOpenRequestModal}
+              >
+                Send forespørsel
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-slate-600">
-              Trykk på «Send forespørsel» nederst for å åpne skjemaet.
-            </p>
-            <Button
-              type="button"
-              className="hidden min-h-[48px] md:inline-flex"
-              onClick={handleOpenRequestModal}
-            >
-              Send forespørsel
-            </Button>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
       <Card className="mt-10 p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -783,7 +838,7 @@ export default function ProviderClient({ params, service: initialService, relate
             {relatedServices.map((related) => (
               <Link
                 key={related.id}
-                href={`/tilbyder/${related.id}`}
+                href={`/tilbyder/${encodeURIComponent(related.id)}`}
                 className="flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md"
               >
                 {related.logo_image_url ? (
@@ -812,20 +867,22 @@ export default function ProviderClient({ params, service: initialService, relate
         </section>
       )}
 
-      <div className="sm:hidden">
-        <div className="fixed inset-x-0 bottom-0 z-bar border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur backdrop-saturate-150">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs text-slate-500">Trygt og enkelt – ingen binding.</p>
-            <Button
-              type="button"
-              className="min-h-[48px] px-4"
-              onClick={handleOpenRequestModal}
-            >
-              Send forespørsel
-            </Button>
+      {!isFacility && (
+        <div className="sm:hidden">
+          <div className="fixed inset-x-0 bottom-0 z-bar border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur backdrop-saturate-150">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">Trygt og enkelt – ingen binding.</p>
+              <Button
+                type="button"
+                className="min-h-[48px] px-4"
+                onClick={handleOpenRequestModal}
+              >
+                Send forespørsel
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {isRequestModalOpen && (
         <div
@@ -1006,6 +1063,13 @@ export default function ProviderClient({ params, service: initialService, relate
           </div>
         </div>
       )}
+
+      <ReportIssueModal
+        serviceId={service.id}
+        serviceName={service.name}
+        open={isReportModalOpen}
+        onClose={closeReportModal}
+      />
     </main>
   );
 }

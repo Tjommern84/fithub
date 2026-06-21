@@ -50,7 +50,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       if (data) {
         providerPages = (data as { id: string }[]).map((s) => ({
-          url: `${BASE_URL}/tilbyder/${s.id}`,
+          url: `${BASE_URL}/tilbyder/${encodeURIComponent(s.id)}`,
           lastModified: now,
           changeFrequency: 'monthly' as const,
           priority: 0.6,

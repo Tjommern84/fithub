@@ -631,7 +631,7 @@ export default function MinSidePage() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <Link
-                        href={`/tilbyder/${booking.service_id}`}
+                        href={`/tilbyder/${encodeURIComponent(booking.service_id)}`}
                         className="text-base font-semibold text-slate-900"
                       >
                         {booking.service_name ?? booking.service_id}
@@ -724,7 +724,7 @@ export default function MinSidePage() {
                   <p className="mt-2 text-xs text-rose-600">{recommendation.reason}</p>
                   <div className="mt-3 flex flex-col gap-2">
                     <ButtonLink
-                      href={`/tilbyder/${recommendation.serviceId}`}
+                      href={`/tilbyder/${encodeURIComponent(recommendation.serviceId)}`}
                       className="w-full text-center text-sm"
                     >
                       Se tilbud

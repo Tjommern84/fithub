@@ -13,6 +13,8 @@ import type { CategoryConfig } from '../../lib/categoryConfig';
 import type { GroupSession } from '../../lib/groupSessions';
 import GroupSessionCard from '../../components/GroupSessionCard';
 import { useLocation } from '../../lib/locationContext';
+import { getServiceIllustration } from '../../lib/serviceIllustrations';
+import ReportIssueModal from '../../components/ReportIssueModal';
 
 const ServiceMap = dynamic(() => import('../../components/ServiceMap'), { ssr: false });
 
@@ -71,11 +73,12 @@ function ServiceCard({
   const { service } = item;
   const typeLabel =
     (serviceTypeLabels as Record<string, string>)[service.type] ?? service.type;
-  const profileHref = `/tilbyder/${service.id}${searchQueryString ? `?${searchQueryString}` : ''}`;
+  const profileHref = `/tilbyder/${encodeURIComponent(service.id)}${searchQueryString ? `?${searchQueryString}` : ''}`;
+  const [reportOpen, setReportOpen] = useState(false);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {service.cover_image_url && (
+      {service.cover_image_url ? (
         <Link href={profileHref} className="relative block h-28 w-full overflow-hidden">
           <Image
             src={service.cover_image_url}
@@ -84,6 +87,13 @@ function ServiceCard({
             sizes="(max-width: 640px) 100vw, 50vw"
             className="object-cover transition-transform hover:scale-105"
           />
+        </Link>
+      ) : (
+        <Link
+          href={profileHref}
+          className="flex h-28 w-full items-center justify-center bg-brand-cream text-brand-copper"
+        >
+          {getServiceIllustration(service)}
         </Link>
       )}
       <div className="p-5">
@@ -180,12 +190,21 @@ function ServiceCard({
       )}
 
       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-        <Link
-          href={profileHref}
-          className="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors"
-        >
-          Se full profil →
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href={profileHref}
+            className="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors"
+          >
+            Se full profil →
+          </Link>
+          <button
+            type="button"
+            onClick={() => setReportOpen(true)}
+            className="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            Rapporter feil
+          </button>
+        </div>
         {item.lat != null && item.lon != null && (
           <SearchHereButton
             lat={item.lat}
@@ -196,6 +215,13 @@ function ServiceCard({
           />
         )}
       </div>
+
+      <ReportIssueModal
+        serviceId={service.id}
+        serviceName={service.name}
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+      />
 
       <script
         type="application/ld+json"
@@ -237,11 +263,12 @@ function UnanchoredServiceCard({
   onSearchHere?: SearchHereFn;
 }) {
   const typeLabel = (serviceTypeLabels as Record<string, string>)[item.type] ?? item.type;
-  const profileHref = `/tilbyder/${item.id}${searchQueryString ? `?${searchQueryString}` : ''}`;
+  const profileHref = `/tilbyder/${encodeURIComponent(item.id)}${searchQueryString ? `?${searchQueryString}` : ''}`;
+  const [reportOpen, setReportOpen] = useState(false);
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {item.cover_image_url && (
+      {item.cover_image_url ? (
         <Link href={profileHref} className="relative block h-28 w-full overflow-hidden">
           <Image
             src={item.cover_image_url}
@@ -250,6 +277,13 @@ function UnanchoredServiceCard({
             sizes="(max-width: 640px) 100vw, 50vw"
             className="object-cover transition-transform hover:scale-105"
           />
+        </Link>
+      ) : (
+        <Link
+          href={profileHref}
+          className="flex h-28 w-full items-center justify-center bg-brand-cream text-brand-copper"
+        >
+          {getServiceIllustration(item)}
         </Link>
       )}
       <div className="p-5">
@@ -329,12 +363,21 @@ function UnanchoredServiceCard({
         )}
 
         <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-          <Link
-            href={profileHref}
-            className="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors"
-          >
-            Se full profil →
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href={profileHref}
+              className="text-xs font-medium text-rose-600 hover:text-rose-800 transition-colors"
+            >
+              Se full profil →
+            </Link>
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              className="text-xs font-medium text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              Rapporter feil
+            </button>
+          </div>
           {item.lat != null && item.lon != null && (
             <SearchHereButton
               lat={item.lat}
@@ -346,6 +389,13 @@ function UnanchoredServiceCard({
           )}
         </div>
       </div>
+
+      <ReportIssueModal
+        serviceId={item.id}
+        serviceName={item.name}
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+      />
     </div>
   );
 }

@@ -11,6 +11,16 @@ module.exports = {
         heading: ['var(--font-outfit)', 'sans-serif'],
         sans: ['var(--font-dm-sans)', 'sans-serif'],
       },
+      colors: {
+        brand: {
+          forest: '#0A1A0E',
+          forestLight: '#163322',
+          copper: '#D4872A',
+          copperHover: '#B86F1E',
+          beige: '#f7f4ef',
+          cream: '#F5EFE3',
+        },
+      },
       // Z-index scale — add new layers here, never use raw numbers in components
       // card(10) < bar(20) < header(30) < dropdown(40) < popup(50) < modal(100)
       zIndex: {

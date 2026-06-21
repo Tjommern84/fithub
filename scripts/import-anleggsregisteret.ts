@@ -318,6 +318,7 @@ async function main() {
       name: navn,
       type: mapping.type,
       main_category: mapping.mainCategory,
+      provider_type: 'facility',
       description: `${anleggstype || 'Idrettsanlegg'} i ${cityDisplay}`,
       address: addressStr,
       city: city || null,
@@ -332,6 +333,13 @@ async function main() {
       coverage: [],
       price_level: mapping.priceLevel,
       owner_user_id: null,
+      // orgnr lagres IKKE her selv om den er tilgjengelig i `orgnr`-variabelen:
+      // services.orgnr har en UNIQUE-constraint (services_orgnr_key), og mange
+      // anlegg deler samme "Eier organisasjonsnr" (f.eks. samme kommune eier
+      // titalls anlegg) — å sette orgnr her ga bulk-upsert-feil på tvers av
+      // rader med samme eier. Se handoff.md for konflikten mot design.md sin
+      // ønskede "lagre orgnr som metadata"-instruks; krever en DB-avgjørelse
+      // (egen kolonne, eller fjern UNIQUE) før det kan gjøres trygt.
     };
 
     processed++;
@@ -354,6 +362,15 @@ async function main() {
         .update({ base_location: `SRID=4326;POINT(${lon} ${lat})` })
         .eq('id', id);
     }
+
+    // Hardkodet 'outdoor' (ikke mapping.type) for å være konsistent med
+    // engangs-datakorreksjonen i sql/28_provider_type.sql, som per design.md
+    // eksplisitt setter type='outdoor' på ALLE anl_%-rader uavhengig av
+    // undertype (gym/ishall/golfbane inkludert) — samme regel her for
+    // fremtidige importer, ikke en egen tolkning.
+    try {
+      await supabase.from('service_types').insert({ service_id: id, type: 'outdoor' });
+    } catch { /* ignore duplicate */ }
 
     if (city) {
       try {

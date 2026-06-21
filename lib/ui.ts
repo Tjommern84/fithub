@@ -13,6 +13,12 @@ export const buttonSecondary =
 export const buttonDestructive =
   'inline-flex min-h-[44px] items-center justify-center rounded-full bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-rose-300';
 
+export const buttonBrand =
+  'inline-flex min-h-[44px] items-center justify-center rounded-full bg-brand-copper px-5 text-sm font-semibold text-white transition hover:bg-brand-copperHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-copper focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400';
+
+export const buttonForest =
+  'inline-flex min-h-[44px] items-center justify-center rounded-full bg-brand-forest px-5 text-sm font-semibold text-white transition hover:bg-brand-forestLight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-forest focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-400';
+
 export const input =
   'min-h-[44px] w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2';
 

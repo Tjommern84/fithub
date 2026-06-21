@@ -29,6 +29,7 @@ type SearchServicesRow = {
   lon: number | null;
   cover_image_url: string | null;
   logo_image_url: string | null;
+  provider_type: Service['provider_type'] | null;
 };
 
 const mapRowToRankedService = (row: SearchServicesRow): RankedService => ({
@@ -52,6 +53,7 @@ const mapRowToRankedService = (row: SearchServicesRow): RankedService => ({
     orgnr: row.orgnr ?? null,
     cover_image_url: row.cover_image_url ?? null,
     logo_image_url: row.logo_image_url ?? null,
+    provider_type: row.provider_type ?? 'business',
   },
   distanceKm: row.distance_km ?? undefined,
   score: row.score,

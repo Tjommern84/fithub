@@ -1,7 +1,7 @@
 # FitHub – CLAUDE.md
 
 > Prosjektets sannhetskilde. Alle agenter leser denne ved oppstart.
-> Oppdateres av PM-agenten. Sist oppdatert: 2026-06-17
+> Oppdateres av PM-agenten. Sist oppdatert: 2026-06-20
 
 ---
 
@@ -26,8 +26,10 @@ Next.js 14 App Router · React **18.2** · TypeScript · Supabase (PostgreSQL + 
 
 | Fil | Rolle |
 |-----|-------|
-| `app/page.tsx` | Forside — server component, importerer CategoryGrid |
-| `components/CategoryGrid.tsx` | 4-tile grid, GPS, Oslo bydel-picker — `'use client'` |
+| `app/page.tsx` | Forside — server component: Hero → Verditilbud → "Aktiviteter nær deg" → CategoryGrid |
+| `components/CategoryGrid.tsx` | 8-tile grid (7 søkekategorier + Turruter-flis) — `'use client'`, lokasjon kommer fra `SearchLocationBar` |
+| `components/SearchLocationBar.tsx` | Samlet søk/lokasjon-felt i toppfanen (erstatter gamle `LocationBar.tsx`) — "Smart søk"-veksling mellom adressefelt og fritekstsøk |
+| `components/home/` | `HomeHero.tsx`, `HomeValueProps.tsx`, `HomeNearbyActivities.tsx` — nye forside-seksjoner |
 | `app/resultater/page.tsx` | Resultater server component — kaller `searchServices()` direkte, ingen cache |
 | `app/resultater/ResultsView.tsx` | Resultater client component — tag-panel, kart, kortliste |
 | `lib/matchingDb.ts` | `searchServices()` — direkte Supabase RPC, ingen cache-lag |
@@ -139,6 +141,16 @@ Bruk en vanlig (ikke-partiell) unik indeks i stedet — trygt, siden NULL ≠ NU
   identiske på alle sider, så enkel upsert på nummer er trygt uten cross-page-dedup.
 - Enkelte rader har genuint ingen koordinater selv i rendret HTML — hopp over, ikke anta alle rader har dem.
 
+### Next.js App Router: ikke-ASCII tegn i dynamiske route-segmenter
+`params.id` i en `[id]`-side dekodes IKKE automatisk av Next.js for ikke-ASCII-tegn (æøå m.fl.) —
+en URL med `%C3%B8` gir `params.id` som den LITERALE teksten `%C3%B8` (ikke `ø`), ikke den dekodede
+verdien. Et `.eq('id', params.id)`-DB-oppslag matcher da aldri raden, selv om strengen er identisk
+i et frittstående script. Verifisert empirisk 2026-06-20 — 41 % av importerte anleggs-ID-er
+(`anl_*`) inneholdt æøå og var alle affisert. **Fiks**: kjør `decodeURIComponent(id).normalize('NFC')`
+på parameteren FØR ethvert DB-oppslag, og bruk `encodeURIComponent()` konsekvent overalt en lenke
+til siden bygges (inkl. sitemap/JSON-LD/canonical-URL). Se `app/tilbyder/[id]/page.tsx`s
+`normalizeServiceId()` for referanseimplementasjon.
+
 ### Trigram-matching: `similarity()` vs `word_similarity()`
 `similarity()`/`%` (brukt i `search_services()`) sammenligner trigram-SETT for hele begge strenger
 og straffer lengdeforskjell hardt — et kort søkeord (f.eks. "yoga") mot en lang sammensatt
@@ -147,6 +159,15 @@ threshold 0.3, selv om ordet faktisk finnes der. Verifisert empirisk 2026-06-18 
 `search_services_unanchored()` (`sql/24_search_fallback_tiers.sql`). **Bruk `word_similarity()`/`<%`
 i stedet** når du matcher et kort ord/uttrykk mot en lang fritekstkolonne — den måler likhet mot
 beste SUBSTRENG i target, riktig semantikk for "finn dette ordet et sted i teksten".
+
+### "Rapporter feil" — umiddelbar skjuling uten godkjenning
+`reportService()` (`app/tilbyder/[id]/actions.ts`) setter `services.reported_at` umiddelbart ved
+FØRSTE rapport — ingen terskel, ingen admin-godkjenning før raden forsvinner fra
+`search_services()`. Dette var en bevisst, eksplisitt forenkling fra bruker for denne runden
+(2026-06-21), **ikke en ferdig løsning** — misbrukspotensial: hvem som helst kan skjule en
+konkurrents oppføring med ett anonymt klikk (rate-limitert 5/time per IP, men ikke mer). **Må
+revurderes før launch** — sannsynlig fiks: terskel (N rapporter) eller admin-godkjenningskø før
+`reported_at` settes. Raden slettes aldri — kun filtrert bort av søket, fortsatt synlig direkte i DB.
 
 ### Generelt
 - **Aldri commit eller push** uten eksplisitt forespørsel
@@ -176,6 +197,19 @@ beste SUBSTRENG i target, riktig semantikk for "finn dette ordet et sted i tekst
 ## Nylig levert
 
 > Flyttes hit fra "In progress" når en spec arkiveres.
+
+### Idrett-illustrasjoner + "Rapporter feil"-flagg — 2026-06-21
+- Ny `lib/serviceIllustrations.tsx`: navnebasert ikon-gjenkjenning (håndball, fotball, kampsport,
+  ski, svømming, tennis, basketball, volleyball, badminton, yoga, styrke, løping/kondisjon) +
+  generisk fallback per `ServiceType`, vist i `HomeNearbyActivities.tsx`/`ResultsView.tsx` når
+  `cover_image_url` mangler — hånd-tegnede inline SVG-er, samme stil som `HomeValueProps.tsx`
+- Ny "Rapporter feil"-knapp på `/resultater`-kort + tilbyder-profilsiden (`ReportIssueModal.tsx`),
+  åpen for alle, rate-limitert 5/time per IP. Ny `services.reported_at`-kolonne + `service_reports`-
+  tabell (`sql/30_service_reports.sql`), `search_services()` filtrerer på `reported_at IS NULL`
+- **Bug funnet og fikset under frontend-verifisering**: rapporter-lenken på profilsiden lå
+  feilaktig inni samme betingelse som Kontakt-seksjonen, så den var usynlig for tjenester uten
+  NOEN kontaktfelt (bekreftet på flere reelle `para_*`-rader)
+- **Se gotcha om umiddelbar skjuling uten godkjenning** — bevisst forenkling, må revurderes før launch
 
 ### Forside-kategorier (7 fliser) — 2026-06-30
 - Ny "Utendørs"-flise (tuftepark/utetrening, pluss plassholder-tag "fellestimer" for fremtidig oppmeldingstjeneste)
@@ -213,6 +247,60 @@ beste SUBSTRENG i target, riktig semantikk for "finn dette ordet et sted i tekst
 - Frittstående — ingen kobling til søk/`categoryConfig.ts`. Den pausede spec'en `sok-fallback-kjede` er bevisst frikoblet
 - Kjent, ikke-kritisk særtrekk: `municipality`/`county` for grensetettsteder (f.eks. Drammen) kan være `NULL` eller satt til "feil" fylke — tettstedet strekker seg over en grense, og verdien avhenger av hvilken fylkesside dataene først ble lest fra. Befolkning og koordinater er upåvirket og korrekte
 - Engangsimport, ingen cron — re-kjøring av `scripts/parse-wikipedia-settlements.ts` + `push-wikipedia-settlements.ts` er idempotent
+
+### "Søk her i stedet" + tag-filter-fiks — 2026-06-19
+- Knapp på søketreff flytter lagret lokasjon til treffets sted (i stedet for ren kart-panorering),
+  fjerner fritekst-`q`, beholder `cat`/`tags`/`radius`, fjerner `page`
+- Fikset 2 reelle bugs i søk-fallback-kjeden: Tier 2 sendte feilaktig hele original-query på nytt
+  i stedet for `remainder` (`sql/27` + `lib/matchingDb.ts`); Tier 3 (`search_services_unanchored()`)
+  støttet ikke `p_tags` i det hele tatt — lagt til med samme retry-uten-parameter-mønster som
+  `p_borough` for å unngå at ukjørt migrasjon brekker ALLE Tier 3-kall, ikke bare tag-filtrerte
+- Første ekte Tier 2-suksess observert i prosjektet (Oslo→Drammen sportsklubb-søk)
+
+### Samlet søk/lokasjon-felt i toppfanen — 2026-06-19
+- `SearchLocationBar.tsx` erstatter `LocationBar.tsx` + de to embedded søkefeltene i
+  `CategoryGrid.tsx`/`ResultsView.tsx` — ett felt, "Smart søk"-veksling styrer om det er et rent
+  adressefelt (geokoding bevart) eller fritekstsøk (Tier 1/2/3-kjeden)
+- Standard lokasjon Oslo + samtidig GPS-prompt ved første besøk (ingen lagret lokasjon)
+- Oslo-bydel-velgeren fjernet helt (bekreftet dead code i backend før fjerning)
+- **Race-condition-gotcha**: barn-komponenters `useEffect` kjører FØR foreldre-komponenters i React
+  — en naiv `location===null`-sjekk i `SearchLocationBar` ville alltid vært sann ved første render
+  og overskrevet en faktisk lagret lokasjon med Oslo på HVER sideload. Løsning: les `localStorage`
+  direkte og synkront i stedet for å stole på context-state ved mount
+
+### Turruter-flis på forsiden — 2026-06-19
+- 8. flis ("Turruter") lenker til `/tur`, gjenbruker `CategoryCard` uendret (kun typen for
+  `config.key` utvidet til å akseptere `'tur'` i tillegg til `MainCategory`) — `lib/categoryConfig.ts`/
+  `MainCategory`/søkesystemet ikke rørt. Alltid klikkbar, uavhengig av lokasjon
+
+### Homepage-rebrand — 2026-06-19/20
+- Ny forside-komposisjon: Hero → Verditilbud → "Aktiviteter nær deg" → eksisterende `CategoryGrid`
+  (uendret, kun flyttet nedover + `<h1>`→`<h2>`)
+- Nye `brand.*`-fargetokens i `tailwind.config.js`, gjenbrukt fra eksisterende `categoryConfig.ts`-hex
+  (`#0A1A0E` skoggrønn, `#D4872A` kobber) for visuell kontinuitet — `categoryConfig.ts` selv urørt
+- "Aktiviteter nær deg" bygget på eksisterende `services`/`searchServices()` (ikke `group_sessions`,
+  som har ~0 reelle rader i produksjon)
+- Ny stor søkebar i hero (tekst/posisjon/kategori/dekorativ "når som helst"), toppfanens
+  `SearchLocationBar` skjult kun på `/` via egen `ConditionalSearchBar`-wrapper (`usePathname()`)
+- **Driftslærdom**: `npm run build` kjørt samtidig med aktiv `npm run dev` mot samme `.next`-mappe
+  korrumperer dev-serverens webpack-chunk-referanser (hele siden 500, ikke bare testet rute) — se
+  også egen feedback-memory om dev-server-koordinering mellom PM og kodeagenter
+- Nye sider `/om-oss`, `/tilbydere`, `/magasin` (sistnevnte "kommer snart" — ingen CMS finnes)
+
+### Stasjonære anlegg uten tilbyder — 2026-06-20
+- Ny `provider_type` (`'business'|'facility'`) på `services` — skiller offentlige anlegg
+  (tuftepark, hinderløyper fra Anleggsregisteret) fra kontaktbare bedrifter
+- `/tilbyder/[id]` viser facility-modus for anlegg: adresse+Google Maps-lenke i stedet for
+  Kontakt-seksjon, ingen "Krev profil"/"Send forespørsel", `Place` i stedet for `LocalBusiness` i JSON-LD
+- Fant og fikset en STØRRE bug enn opprinnelig scope under empirisk Steg 0-undersøkelse: se
+  ikke-ASCII-route-segment-gotcha ovenfor — affiserte 41 % av alle anleggs-rader (2064 av 5038)
+- Alle 5020 `anl_*`-rader manglet `service_types` helt (0 hadde noen rad) — derav at de aldri
+  dukket opp under tag-filtrert "Utendørs"-søk. Engangs-datakorreksjon + fikset ved kilden i
+  `import-anleggsregisteret.ts`
+- `orgnr` lagres bevisst IKKE for anlegg — `services.orgnr` har en UNIQUE-constraint, og mange
+  anlegg deler samme eier-orgnr (f.eks. en kommune), som ville brutt constraint ved bulk-upsert
+- **Utsatt oppfølging**: `app/dashboard/services/[id]/edit/page.tsx` kan ha samme id-encoding-bug
+  for tilbyderes egne tjenester med æøå i ID — ikke verifisert ennå
 
 ---
 

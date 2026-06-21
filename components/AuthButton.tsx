@@ -3,11 +3,21 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
-import { Button, ButtonLink } from './ui/Button';
+import { Button, ButtonLink, type ButtonVariant } from './ui/Button';
 import { Input } from './ui/Input';
 import { label } from '../lib/ui';
 
-export default function AuthButton() {
+type AuthButtonProps = {
+  ctaLabel?: string;
+  ctaVariant?: ButtonVariant;
+  textSizeClassName?: string;
+};
+
+export default function AuthButton({
+  ctaLabel = 'Bli medlem',
+  ctaVariant = 'brand',
+  textSizeClassName = '!text-2xl',
+}: AuthButtonProps = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -30,11 +40,11 @@ export default function AuthButton() {
   }, []);
 
   if (!isSupabaseConfigured) {
-    return <ButtonLink href="/min-side">Min side</ButtonLink>;
+    return <ButtonLink href="/min-side" className={textSizeClassName}>Min side</ButtonLink>;
   }
 
   if (session) {
-    return <ButtonLink href="/min-side">Min side</ButtonLink>;
+    return <ButtonLink href="/min-side" className={textSizeClassName}>Min side</ButtonLink>;
   }
 
   return (
@@ -46,19 +56,20 @@ export default function AuthButton() {
           setStatus('idle');
           setError('');
         }}
-        className="text-sm font-medium text-slate-600 transition hover:text-slate-900"
+        className="text-sm font-medium text-white/70 transition hover:text-white"
       >
         Logg inn
       </button>
       <Button
         type="button"
+        variant={ctaVariant}
         onClick={() => {
           setShowForm(true);
           setStatus('idle');
           setError('');
         }}
       >
-        Bli medlem
+        {ctaLabel}
       </Button>
 
       {showForm && (

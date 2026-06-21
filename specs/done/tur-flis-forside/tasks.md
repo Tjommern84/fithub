@@ -12,7 +12,7 @@
 - [x] Manuell test: 8 fliser bekreftet i HTML (alle labels inkl. "Turruter"), Tur-bildesti verifisert. Disabled-attributt sjekket programmatisk per flise uten lokasjon satt: alle 7 søkekategorier `disabled:true`, Turruter `disabled:false`. **Begrensning**: bilde-cycling/hover/touch-swipe er uendret kode (samme `CategoryCard`), men selve den visuelle animasjonen krever browser — ikke verifiserbar av agent via curl
 
 ## PM / Avslutning
-- [ ] Sjekke mot suksesskriterier i proposal.md
-- [ ] Oppdatere CLAUDE.md
-- [ ] Arkivere spec til specs/done/
-- [ ] Oppdatere handoff.md med "feature fullført"
+- [x] Sjekke mot suksesskriterier i proposal.md
+- [x] Oppdatere CLAUDE.md
+- [x] Arkivere spec til specs/done/
+- [x] Oppdatere handoff.md med "feature fullført"

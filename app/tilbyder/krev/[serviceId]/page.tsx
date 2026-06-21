@@ -8,7 +8,7 @@ import { claimServiceWithOrgnr, type ClaimWithOrgnrStatus } from '../../[id]/act
 
 type Props = { params: { serviceId: string } };
 
-type ServiceInfo = { name: string; hasOrgnr: boolean };
+type ServiceInfo = { name: string; hasOrgnr: boolean; isFacility: boolean };
 
 const initialState: ClaimWithOrgnrStatus = {
   ok: false,
@@ -30,12 +30,16 @@ export default function KrevProfilPage({ params }: Props) {
     (async () => {
       const [{ data: sessionData }, { data: svcData }] = await Promise.all([
         supabase!.auth.getSession(),
-        supabase!.from('services').select('name, orgnr').eq('id', serviceId).maybeSingle(),
+        supabase!.from('services').select('name, orgnr, provider_type').eq('id', serviceId).maybeSingle(),
       ]);
       if (!mounted) return;
       setSession(sessionData.session ?? null);
       if (svcData) {
-        setService({ name: svcData.name, hasOrgnr: Boolean(svcData.orgnr) });
+        setService({
+          name: svcData.name,
+          hasOrgnr: Boolean(svcData.orgnr),
+          isFacility: svcData.provider_type === 'facility',
+        });
       }
       setLoading(false);
     })();
@@ -67,6 +71,24 @@ export default function KrevProfilPage({ params }: Props) {
 
   if (!service) {
     return <ErrorPage message="Fant ikke tjenesten." />;
+  }
+
+  if (service.isFacility) {
+    return (
+      <Shell>
+        <h1 className="text-xl font-bold text-slate-900 mb-1">Kan ikke kreves</h1>
+        <p className="text-slate-500 text-sm mb-5">
+          <strong>{service.name}</strong> er et offentlig tilgjengelig anlegg uten registrert
+          tilbyder. Det finnes derfor ingen virksomhet å verifisere eierskap for.
+        </p>
+        <Link
+          href="/"
+          className="inline-block rounded-lg bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-700 transition-colors"
+        >
+          Tilbake til forsiden
+        </Link>
+      </Shell>
+    );
   }
 
   if (state.ok) {

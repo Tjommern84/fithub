@@ -1,8 +1,8 @@
 ﻿import Link from 'next/link';
 import { type ComponentPropsWithoutRef, type ReactNode } from 'react';
-import { buttonPrimary, buttonSecondary, buttonDestructive } from '../../lib/ui';
+import { buttonPrimary, buttonSecondary, buttonDestructive, buttonBrand, buttonForest } from '../../lib/ui';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'destructive';
+export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'brand' | 'forest';
 
 type ButtonProps = ComponentPropsWithoutRef<'button'> & {
   variant?: ButtonVariant;
@@ -17,6 +17,8 @@ const variantClasses: Record<ButtonVariant, string> = {
   primary: buttonPrimary,
   secondary: buttonSecondary,
   destructive: buttonDestructive,
+  brand: buttonBrand,
+  forest: buttonForest,
 };
 
 export function Button({ variant = 'primary', className = '', ...props }: ButtonProps) {

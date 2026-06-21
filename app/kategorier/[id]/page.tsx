@@ -95,7 +95,7 @@ export default async function CategoryPage({
                   </div>
                   <p className="text-sm text-slate-600 line-clamp-3">{service.description}</p>
                   <div className="flex items-center justify-between">
-                    <ButtonLink href={`/tilbyder/${service.id}`}>Se tilbud</ButtonLink>
+                    <ButtonLink href={`/tilbyder/${encodeURIComponent(service.id)}`}>Se tilbud</ButtonLink>
                     <span className="text-xs text-slate-500">
                       Rating: {service.rating_avg.toFixed(1)} ({service.rating_count})
                     </span>

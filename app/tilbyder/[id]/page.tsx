@@ -28,7 +28,7 @@ const typeLabels: Record<Service['type'], string> = {
 };
 
 const SERVICE_SELECT =
-  'id, name, type, description, coverage, price_level, rating_avg, rating_count, tags, goals, venues, is_active, cover_image_url, logo_image_url, phone, email, website, address';
+  'id, name, type, description, coverage, price_level, rating_avg, rating_count, tags, goals, venues, is_active, cover_image_url, logo_image_url, phone, email, website, address, provider_type';
 
 const mapServiceRow = (row: Record<string, unknown>): Service => ({
   id: String(row.id ?? ''),
@@ -49,7 +49,21 @@ const mapServiceRow = (row: Record<string, unknown>): Service => ({
   email: row.email ? String(row.email) : null,
   website: row.website ? String(row.website) : null,
   address: row.address ? String(row.address) : null,
+  provider_type: row.provider_type === 'facility' ? 'facility' : 'business',
 });
+
+const normalizeServiceId = (rawId: string): string => {
+  // Next.js sin App Router-rute (params.id) leverer IKKE alltid en dekodet streng for
+  // ikke-ASCII path-segmenter — bekreftet empirisk: en URL med %C3%B8 ankommer som den
+  // literale 6-tegns-sekvensen "%C3%B8", ikke tegnet "ø". decodeURIComponent løser dette;
+  // .normalize('NFC') er et harmløst sikkerhetsnett for andre tegn enn "ø" (som selv ikke
+  // har en NFD-form) i tilfelle id senere inneholder bokstaver med kombinerende aksenter.
+  try {
+    return decodeURIComponent(rawId).normalize('NFC');
+  } catch {
+    return rawId;
+  }
+};
 
 const fetchServiceById = async (id: string): Promise<Service | null> => {
   if (!id || !supabase) return null;
@@ -67,7 +81,8 @@ const fetchServiceById = async (id: string): Promise<Service | null> => {
   }
 };
 
-const resolveService = async (id: string): Promise<Service | null> => {
+const resolveService = async (rawId: string): Promise<Service | null> => {
+  const id = normalizeServiceId(rawId);
   const cached = await getServiceCache(id);
   if (cached) return cached;
 
@@ -101,7 +116,7 @@ export async function generateMetadata({
   }
 
   const pageTitle = `${service.name} – ${typeLabels[service.type]}`;
-  const pageUrl = `${appUrl}/tilbyder/${service.id}`;
+  const pageUrl = `${appUrl}/tilbyder/${encodeURIComponent(service.id)}`;
   const description = buildDescription(service.description);
   const ogImage = service.cover_image_url ?? ogImageUrl;
 
@@ -159,12 +174,12 @@ export default async function ProviderPage({ params }: { params: { id: string } 
   const localBusinessLd = service
     ? {
         '@context': 'https://schema.org',
-        '@type': 'LocalBusiness',
+        '@type': service.provider_type === 'facility' ? 'Place' : 'LocalBusiness',
         name: service.name,
         description: service.description || undefined,
         url: service.website
           ? service.website.startsWith('http') ? service.website : `https://${service.website}`
-          : `${appUrl}/tilbyder/${service.id}`,
+          : `${appUrl}/tilbyder/${encodeURIComponent(service.id)}`,
         telephone: service.phone ? `+47${service.phone}` : undefined,
         email: service.email || undefined,
         image: service.cover_image_url || undefined,

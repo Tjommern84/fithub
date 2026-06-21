@@ -2,7 +2,7 @@
 import type { ReactNode } from 'react';
 import { Barlow_Condensed, Outfit, DM_Sans } from 'next/font/google';
 import ConsentGate from '../components/ConsentGate';
-import TopNav from '../components/TopNav';
+import ConditionalTopNav from '../components/ConditionalTopNav';
 import Footer from '../components/Footer';
 import { LocationProvider } from '../lib/locationContext';
 
@@ -52,7 +52,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="min-h-screen bg-[#f7f4ef] font-sans text-slate-900">
         <LocationProvider>
           <div className="flex min-h-screen flex-col">
-            <TopNav />
+            <ConditionalTopNav />
             <main className="flex-1">{children}</main>
             <Footer />
           </div>
