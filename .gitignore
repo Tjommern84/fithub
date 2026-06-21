@@ -61,8 +61,8 @@ filer/
 tilbakemeldinger/
 ressurser/*.xlsx
 
-# One-off dedup/debug artifacts
-images/
+# One-off dedup/debug artifacts (root-level only — NOT public/images/, which is served statically)
+/images/
 
 # Windows reserved device name (created by accident)
 nul
