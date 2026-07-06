@@ -1,0 +1,52 @@
+-- ============================================
+-- FIX: search_services() statement timeout (57014) på rene "nærmeste"-søk
+--
+-- ROTÅRSAK (verifisert empirisk 2026-06-22, ikke gjettet):
+-- `services.base_location` har ALDRI hatt en spatial (GIST) indeks i noen
+-- migrasjon — kolonnen legges til som ren `geography(Point, 4326)` i både
+-- sql/01_postgis_and_search.sql og sql/postgis_matching.sql, men ingen fil
+-- i sql/ inneholder `CREATE INDEX ... USING GIST (base_location)`. Eneste
+-- GIST-indeks som finnes er på `service_coverage.radius_center`
+-- (idx_service_coverage_radius_center, sql/01).
+--
+-- I matched_coverage-CTE-en (uendret siden sql/01, senest i sql/30) er det
+-- tredje OR-leddet:
+--
+--   OR (
+--     sc.type = 'city'
+--     AND user_point IS NOT NULL
+--     AND s_loc.base_location IS NOT NULL
+--     AND ST_DWithin(s_loc.base_location, user_point, COALESCE(p_radius_km, 25) * 1000)
+--   )
+--
+-- Dette leddet er IKKE en sjelden edge-case — det er hovedveien. Verifisert
+-- mot prod (service-role count, 2026-06-22):
+--   service_coverage totalt:        33 886
+--   service_coverage type='radius':      0   <- den GIST-indekserte grenen brukes ALDRI
+--   service_coverage type='city':   23 354   <- denne grenen, mot uindeksert base_location
+--   service_coverage type='region': 10 532
+--   services totalt:                32 401
+--
+-- Siden p_city i praksis ofte er NULL (rent "nærmeste meg"-søk uten valgt by,
+-- f.eks. forsidens "Aktiviteter nær deg"), faller ALLE 23 354 type='city'-radene
+-- gjennom til ST_DWithin(s_loc.base_location, ...). Uten GIST-indeks på
+-- base_location kan planneren ikke bruke en index scan/KNN her — den må gjøre
+-- en sekvensiell ST_DWithin-beregning (geodesic distance) for hver av de
+-- 23 354 coverage-radene joinet mot services (32 401 rader). Det er denne
+-- ujournalførte O(n)-skanningen som timer ut på 3.2-3.6s uavhengig av
+-- p_radius_km-verdi (problemet er mangelen på indeks, ikke radiusens størrelse).
+--
+-- Datasettet har vokst kraftig siden funksjonen sist var rask nok uten denne
+-- indeksen (tidligere ~27 000 tjenester, nå 32 401 inkl. 5 038
+-- provider_type='facility'-rader fra Anleggsregisteret) — en sekvensiell
+-- ST_DWithin-skanning som var akseptabel på et mindre datasett er nå for treg.
+--
+-- FIX: legg til manglende GIST-indeks på services.base_location. Dette gjør
+-- ST_DWithin(s_loc.base_location, user_point, radius) indeks-vennlig (bruker
+-- &&-bounding-box-sjekk via GIST før den dyre geodesic-beregningen), akkurat
+-- som radius_center allerede har. Ingen endring i search_services()-funksjonens
+-- logikk eller signatur — ren indeks-tilføyelse, ingen DROP+CREATE nødvendig.
+-- ============================================
+
+CREATE INDEX IF NOT EXISTS idx_services_base_location
+  ON services USING GIST (base_location);

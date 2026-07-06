@@ -1,9 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, CircleMarker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, CircleMarker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import type { Trail, TrailType } from '../lib/trailsDb';
 import type { Settlement } from '../lib/settlementsDb';
+import type { Destination, DestinationType } from '../lib/destinationsDb';
+import type { WalkingRoute } from '../lib/orsClient';
+import DestinationPanel from './DestinationPanel';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -31,6 +35,24 @@ const TRAIL_LABELS: Record<TrailType, string> = {
 };
 
 const SETTLEMENT_COLOR = '#a855f7';
+
+const DESTINATION_COLORS: Record<DestinationType, string> = {
+  peak:      '#f59e0b',   // amber — fjelltoppar
+  lake:      '#3b82f6',   // blue — tjern/vann
+  viewpoint: '#8b5cf6',   // violet — utsikt
+  shelter:   '#10b981',   // emerald — gapahuk
+  hut:       '#ef4444',   // red — hytter
+};
+
+const DESTINATION_ICONS: Record<DestinationType, string> = {
+  peak:      '🏔',
+  lake:      '🌊',
+  viewpoint: '👁',
+  shelter:   '⛺',
+  hut:       '🏠',
+};
+
+const ROUTE_COLOR = '#f97316'; // oransje — bereknet rute til destinasjon
 
 function formatDistance(distanceM: number): string {
   if (distanceM < 1000) return '< 1 km';
@@ -71,6 +93,163 @@ function summarizeGroup(groupTrails: Trail[]): GroupSummary | null {
   };
 }
 
+function isRealName(name: string | null | undefined): boolean {
+  const trimmed = name?.trim();
+  return !!trimmed && trimmed !== 'Ukjent';
+}
+
+type ChainedGroup = GroupSummary & { key: string };
+type ChainedGroupsResult = { groups: ChainedGroup[]; trailIdToKey: Map<string, string> };
+
+// Koblings-basert kjeding (Tillegg 2): navne-gruppering (over) løser ~70% av tilfellene —
+// fysisk sammenhengende segmenter med FORSKJELLIG navn (kommunegrense-artefakt i Geonorge
+// sin kildedata, bekreftet empirisk: 26% av tilstøtende segmentpar) eller "Ukjent" (egen
+// id-basert gruppe pr. segment) grupperes fortsatt ikke av navne-passet alene. Dette legger
+// et kjede-pass PÅ TOPP: to navne-grupper av samme trailType slås sammen hvis et segment i
+// den ene deler et endepunkt (innenfor ~30m ekte avstand) med et segment i den andre.
+//
+// Rutenett-bucket for ytelse (ikke O(n²)): cellestørrelse 0,0005° er ~55m i breddegrad-
+// retning — alltid det STØRSTE av lat/lon-celle-arealet uansett breddegrad (lengdegrad-celler
+// krymper mot polene, aldri motsatt) — så en 3×3-nabolagssjekk dekker komfortabelt 30m-
+// terskelen selv for endepunkt nær en cellegrense.
+//
+// Sikkerhetsregel mot feilaktig sammenslåing ved ekte kryss: tell DISTINKTE navne-grupper
+// (ikke rå segment-antall) som møtes i et punkt. Eksakt 2 → kjed sammen. 3+ → sannsynlig
+// reelt trekryss (f.eks. knutepunkt i en marka) — la stå ugruppert, bevisst konservativt.
+function buildChainedGroups(inputTrails: Trail[]): ChainedGroupsResult {
+  const nameGroups = new Map<string, Trail[]>();
+  for (const trail of inputTrails) {
+    const key = getGroupKey(trail);
+    const existing = nameGroups.get(key);
+    if (existing) existing.push(trail);
+    else nameGroups.set(key, [trail]);
+  }
+
+  // Union-find over navne-gruppe-nøkler
+  const parent = new Map<string, string>();
+  for (const key of nameGroups.keys()) parent.set(key, key);
+  const find = (k: string): string => {
+    let root = k;
+    while (parent.get(root) !== root) root = parent.get(root)!;
+    let cur = k;
+    while (parent.get(cur) !== root) {
+      const next = parent.get(cur)!;
+      parent.set(cur, root);
+      cur = next;
+    }
+    return root;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+
+  const CELL_DEG = 0.0005;
+  const THRESHOLD_M = 30;
+  const cellOf = (v: number) => Math.round(v / CELL_DEG);
+
+  type EndpointRef = { trailId: string; groupKey: string; trailType: TrailType; point: [number, number] };
+  const buckets = new Map<string, EndpointRef[]>();
+  const endpoints: EndpointRef[] = [];
+
+  for (const [groupKey, groupTrails] of nameGroups) {
+    for (const trail of groupTrails) {
+      if (trail.coordinates.length === 0) continue;
+      const start = trail.coordinates[0];
+      const end = trail.coordinates[trail.coordinates.length - 1];
+      endpoints.push({ trailId: trail.id, groupKey, trailType: trail.trailType, point: start });
+      endpoints.push({ trailId: trail.id, groupKey, trailType: trail.trailType, point: end });
+    }
+  }
+  for (const ep of endpoints) {
+    const bucketKey = `${ep.trailType}::${cellOf(ep.point[0])}_${cellOf(ep.point[1])}`;
+    const arr = buckets.get(bucketKey);
+    if (arr) arr.push(ep);
+    else buckets.set(bucketKey, [ep]);
+  }
+
+  for (const ep of endpoints) {
+    const latC = cellOf(ep.point[0]);
+    const lonC = cellOf(ep.point[1]);
+    const nearbyGroupKeys = new Set<string>([ep.groupKey]);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const candidates = buckets.get(`${ep.trailType}::${latC + dx}_${lonC + dy}`);
+        if (!candidates) continue;
+        for (const other of candidates) {
+          if (other.trailId === ep.trailId) continue;
+          if (L.latLng(ep.point).distanceTo(L.latLng(other.point)) <= THRESHOLD_M) {
+            nearbyGroupKeys.add(other.groupKey);
+          }
+        }
+      }
+    }
+    // Eksakt 2 distinkte grupper møtes → trygg kobling. 1 = ingen nabo. 3+ = reelt kryss, hopp over.
+    if (nearbyGroupKeys.size === 2) {
+      const [a, b] = Array.from(nearbyGroupKeys);
+      union(a, b);
+    }
+  }
+
+  const rootToKeys = new Map<string, string[]>();
+  for (const key of nameGroups.keys()) {
+    const root = find(key);
+    const arr = rootToKeys.get(root);
+    if (arr) arr.push(key);
+    else rootToKeys.set(root, [key]);
+  }
+
+  const groups: ChainedGroup[] = [];
+  const trailIdToKey = new Map<string, string>();
+  for (const memberKeys of rootToKeys.values()) {
+    const sortedKeys = [...memberKeys].sort();
+    // Sortert kombinasjon av underliggende nøkler — stabil/deterministisk uavhengig av
+    // beregningsrekkefølge (union-find sin root kan variere mellom kjøringer).
+    const chainKey = sortedKeys.length === 1 ? sortedKeys[0] : `chain::${sortedKeys.join('|')}`;
+    const allTrails = sortedKeys.flatMap((k) => nameGroups.get(k)!);
+
+    // Representant-navn: største navngitte undergruppe vinner over "Ukjent" uavhengig av
+    // størrelse; blant grupper med samme navngitt-status, størst segment-antall vinner.
+    let bestKey = sortedKeys[0];
+    for (const k of sortedKeys.slice(1)) {
+      const candidate = nameGroups.get(k)!;
+      const best = nameGroups.get(bestKey)!;
+      const candidateNamed = isRealName(candidate[0].name);
+      const bestNamed = isRealName(best[0].name);
+      if (candidateNamed && !bestNamed) { bestKey = k; continue; }
+      if (!candidateNamed && bestNamed) continue;
+      if (candidate.length > best.length) bestKey = k;
+    }
+    const representative = summarizeGroup(nameGroups.get(bestKey)!)!;
+    const full = summarizeGroup(allTrails)!;
+
+    groups.push({
+      key: chainKey,
+      name: representative.name,
+      trailType: representative.trailType,
+      maintainer: representative.maintainer,
+      totalLengthKm: full.totalLengthKm,
+      trails: allTrails,
+    });
+    for (const t of allTrails) trailIdToKey.set(t.id, chainKey);
+  }
+
+  return { groups, trailIdToKey };
+}
+
+function MapClickHandler({ enabled, onMapClick }: {
+  enabled: boolean;
+  onMapClick: (pos: [number, number]) => void;
+}) {
+  useMapEvents({
+    click(e) {
+      if (enabled) onMapClick([e.latlng.lat, e.latlng.lng]);
+    },
+  });
+  return null;
+}
+
 function BoundsWatcher({ onChange }: { onChange: (bounds: L.LatLngBounds) => void }) {
   const map = useMap();
 
@@ -105,11 +284,24 @@ function SelectionWatcher({ groupKey, trails }: { groupKey: string | null; trail
   return null;
 }
 
-export default function TrailMap() {
+export default function TrailMap({ initialDestId }: { initialDestId?: string }) {
   const [center, setCenter] = useState<[number, number]>(DRAMMEN);
   const [trails, setTrails] = useState<Trail[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [destinations, setDestinations] = useState<Destination[]>([]);
   const [showSettlements, setShowSettlements] = useState(true);
+  const [showDestinations, setShowDestinations] = useState(true);
+  const [selectedDestId, setSelectedDestId] = useState<string | null>(initialDestId ?? null);
+  const [footRoute, setFootRoute] = useState<WalkingRoute | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  // Hvilken rute som faktisk vises på kartet (kan overstyres av panel-modusen)
+  const [activeRouteCoords, setActiveRouteCoords] = useState<[number, number][]>([]);
+  const [activeRouteColor, setActiveRouteColor] = useState(ROUTE_COLOR);
+  const [activeMode, setActiveMode] = useState<'foot' | 'cycling' | 'car' | 'transit'>('foot');
+  const [pinMode, setPinMode] = useState(false);
+  const [pinPosition, setPinPosition] = useState<[number, number] | null>(null);
+  const [pinKey, setPinKey] = useState(0);
+  const startPoint: [number, number] = pinPosition ?? center;
   const [visibleTypes, setVisibleTypes] = useState<Record<TrailType, boolean>>({
     fotrute: true,
     skiloype: true,
@@ -117,6 +309,11 @@ export default function TrailMap() {
     annet: true,
   });
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  // Skjul ferdig-kjedede grupper der SAMLET lengde er under 1 km — standard PÅ (skjult),
+  // siden motivasjonen ("rotete kart, vanskelig å finne lange ruter") gjelder de fleste
+  // brukstilfeller. Reversibel checkbox i stedet for en hardkodet regel, siden det gir
+  // brukeren en vei tilbake uten kodeendring (samme filosofi som type-/Tettsteder-toggles).
+  const [hideShortTrails, setHideShortTrails] = useState(true);
   const fetchSeq = useRef(0);
 
   const visibleTrails = useMemo(
@@ -124,20 +321,42 @@ export default function TrailMap() {
     [trails, visibleTypes]
   );
 
+  const chainedVisible = useMemo(() => buildChainedGroups(visibleTrails), [visibleTrails]);
+
+  // Filtreres på gruppens TOTALE lengde etter kjeding, ikke enkeltsegmenter — en lang rute
+  // bygget av mange korte Geonorge-segmenter (f.eks. "Gulskogen – Konnerudkollen" sine
+  // 24×~0,1 km) skal IKKE brytes opp eller skjules siden den TOTALT er over 1 km.
+  // `totalLengthKm === null` betyr at INGEN segmenter i gruppen har lengdedata i kildedata —
+  // usikker lengde er ikke det samme som bekreftet kort, så disse vises uansett.
+  const visibleGroups = useMemo(() => {
+    if (!hideShortTrails) return chainedVisible.groups;
+    return chainedVisible.groups.filter(
+      (g) => g.totalLengthKm === null || g.totalLengthKm >= 1
+    );
+  }, [chainedVisible, hideShortTrails]);
+
+  // Samme filtrerte sett brukes til BÅDE kart-Polyline-rendering og listepanelet under —
+  // ett sannhetssted, som resten av filen allerede er bygget opp etter.
+  const keptTrailIds = useMemo(
+    () => new Set(visibleGroups.flatMap((g) => g.trails.map((t) => t.id))),
+    [visibleGroups]
+  );
+
+  const sortedDestinationList = useMemo(() => {
+    if (!showDestinations) return [];
+    const origin = L.latLng(startPoint);
+    return [...destinations]
+      .map(d => ({ ...d, distanceM: origin.distanceTo(L.latLng([d.lat, d.lon])) }))
+      .sort((a, b) => a.distanceM - b.distanceM)
+      .slice(0, 20);
+  }, [destinations, center, showDestinations]);
+
   const groupedTrailList = useMemo(() => {
-    const byKey = new Map<string, Trail[]>();
-    for (const trail of visibleTrails) {
-      const key = getGroupKey(trail);
-      const existing = byKey.get(key);
-      if (existing) existing.push(trail);
-      else byKey.set(key, [trail]);
-    }
-    const origin = L.latLng(center);
-    return Array.from(byKey.entries())
-      .map(([key, groupTrails]) => ({
-        key,
-        ...(summarizeGroup(groupTrails) as GroupSummary),
-        distanceM: groupTrails.reduce(
+    const origin = L.latLng(startPoint);
+    return visibleGroups
+      .map((group) => ({
+        ...group,
+        distanceM: group.trails.reduce(
           (min, t) =>
             Math.min(
               min,
@@ -147,15 +366,16 @@ export default function TrailMap() {
         ),
       }))
       .sort((a, b) => a.distanceM - b.distanceM);
-  }, [visibleTrails, center]);
+  }, [visibleGroups, center]);
 
-  // Bevisst slått opp fra full `trails` (ikke `visibleTrails`) — samme presedens som
-  // tidligere `selectedTrail`: valget skal ikke forsvinne bare fordi brukeren skrur av
+  // Bevisst kjedet fra full `trails` (ikke `visibleTrails`) — samme presedens som tidligere
+  // (kun navne-basert) selectedGroup: valget skal ikke forsvinne bare fordi brukeren skrur av
   // typen i legend, kun hvis segmentene faller helt utenfor viewport ved panorering.
+  const chainedFull = useMemo(() => buildChainedGroups(trails), [trails]);
   const selectedGroup = useMemo(() => {
     if (!selectedGroupKey) return null;
-    return summarizeGroup(trails.filter((t) => getGroupKey(t) === selectedGroupKey));
-  }, [trails, selectedGroupKey]);
+    return chainedFull.groups.find((g) => g.key === selectedGroupKey) ?? null;
+  }, [chainedFull, selectedGroupKey]);
 
   const allTypesHidden = (Object.keys(visibleTypes) as TrailType[]).every(
     (t) => !visibleTypes[t]
@@ -181,22 +401,65 @@ export default function TrailMap() {
       maxLat: String(bounds.getNorth()),
     });
     fetch(`/api/trails?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: Trail[]) => {
-        if (seq === fetchSeq.current) setTrails(data);
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: Trail[] | null) => {
+        if (data !== null && seq === fetchSeq.current) setTrails(data);
       })
-      .catch(() => {
-        /* ignorer feilede henting, behold forrige resultat */
-      });
+      .catch(() => {});
 
     fetch(`/api/settlements?${params.toString()}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: Settlement[]) => {
-        if (seq === fetchSeq.current) setSettlements(data);
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: Settlement[] | null) => {
+        if (data !== null && seq === fetchSeq.current) setSettlements(data);
       })
-      .catch(() => {
-        /* ignorer feilede henting, behold forrige resultat */
-      });
+      .catch(() => {});
+
+    fetch(`/api/destinations?${params.toString()}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: Destination[] | null) => {
+        if (data !== null && seq === fetchSeq.current) setDestinations(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  const selectedDestination = useMemo(
+    () => destinations.find(d => d.id === selectedDestId) ?? null,
+    [destinations, selectedDestId]
+  );
+
+  const handleSelectDestination = useCallback((dest: Destination) => {
+    setSelectedDestId(dest.id);
+    setFootRoute(null);
+    setActiveRouteCoords([]);
+    setActiveMode('foot');
+    setActiveRouteColor(ROUTE_COLOR);
+    setRouteLoading(true);
+    const [userLat, userLon] = startPoint;
+    fetch(`/api/route?dest_id=${dest.id}&user_lat=${userLat}&user_lon=${userLon}&profile=foot-walking`)
+      .then(res => res.ok ? res.json() : null)
+      .then((data: WalkingRoute | null) => {
+        if (data) {
+          setFootRoute(data);
+          setActiveRouteCoords(data.coordinates);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setRouteLoading(false));
+  }, [center]);
+
+  const handleModeChange = useCallback((
+    mode: 'foot' | 'cycling' | 'car' | 'transit',
+    coords?: [number, number][]
+  ) => {
+    setActiveMode(mode);
+    const colors: Record<string, string> = {
+      foot: ROUTE_COLOR,
+      cycling: '#16a34a',
+      car: '#3b82f6',
+      transit: '#8b5cf6',
+    };
+    setActiveRouteColor(colors[mode] ?? ROUTE_COLOR);
+    setActiveRouteCoords(coords ?? []);
   }, []);
 
   return (
@@ -211,13 +474,45 @@ export default function TrailMap() {
 
             <BoundsWatcher onChange={handleBoundsChange} />
             <SelectionWatcher groupKey={selectedGroupKey} trails={selectedGroup?.trails ?? []} />
+            <MapClickHandler
+              enabled={pinMode}
+              onMapClick={(pos) => {
+                setPinPosition(pos);
+                setPinKey(k => k + 1);
+                setActiveRouteCoords([]);
+                setFootRoute(null);
+                setSelectedDestId(null);
+              }}
+            />
+
+            {pinPosition && (
+              <Marker
+                key={`startpin-${pinKey}`}
+                position={pinPosition}
+                draggable
+                icon={L.divIcon({
+                  html: `<div style="background:#f97316;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 4px rgba(0,0,0,.4)"></div>`,
+                  className: '',
+                  iconSize: [26, 26],
+                  iconAnchor: [13, 26],
+                })}
+                eventHandlers={{
+                  dragend(e) {
+                    const { lat, lng } = e.target.getLatLng();
+                    setPinPosition([lat, lng]);
+                  },
+                }}
+              >
+                <Popup>Startpunkt for turen</Popup>
+              </Marker>
+            )}
 
             <Marker position={center}>
               <Popup>Din posisjon</Popup>
             </Marker>
 
-            {visibleTrails.map((trail) => {
-              const key = getGroupKey(trail);
+            {visibleTrails.filter((trail) => keptTrailIds.has(trail.id)).map((trail) => {
+              const key = chainedVisible.trailIdToKey.get(trail.id) ?? getGroupKey(trail);
               const isSelected = selectedGroupKey !== null && key === selectedGroupKey;
               const isDimmed = selectedGroupKey !== null && !isSelected;
               return (
@@ -247,6 +542,45 @@ export default function TrailMap() {
               );
             })}
 
+            {showDestinations && (
+              <MarkerClusterGroup chunkedLoading>
+                {destinations.map((dest) => {
+                  const color = DESTINATION_COLORS[dest.destinationType] ?? '#f59e0b';
+                  const icon = L.divIcon({
+                    html: `<div style="background:${color};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);${dest.id === selectedDestId ? 'outline:2px solid ' + color + ';outline-offset:2px' : ''}">${DESTINATION_ICONS[dest.destinationType] ?? '📍'}</div>`,
+                    className: '',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                  });
+                  return (
+                    <Marker
+                      key={dest.id}
+                      position={[dest.lat, dest.lon]}
+                      icon={icon}
+                      eventHandlers={{ click: () => handleSelectDestination(dest) }}
+                    >
+                      <Popup>
+                        <div className="min-w-[140px]">
+                          <p className="font-semibold text-sm">{DESTINATION_ICONS[dest.destinationType]} {dest.name}</p>
+                          {dest.elevationM != null && (
+                            <p className="text-xs text-slate-500 mt-0.5">{dest.elevationM} moh</p>
+                          )}
+                        </div>
+                      </Popup>
+                    </Marker>
+                  );
+                })}
+              </MarkerClusterGroup>
+            )}
+
+            {/* Aktiv rute til valgt destinasjon */}
+            {activeRouteCoords.length > 0 && (
+              <Polyline
+                positions={activeRouteCoords.map(([lon, lat]) => [lat, lon])}
+                pathOptions={{ color: activeRouteColor, weight: 5, opacity: 0.9 }}
+              />
+            )}
+
             {showSettlements && settlements.map((settlement) => (
               <CircleMarker
                 key={settlement.id}
@@ -274,6 +608,23 @@ export default function TrailMap() {
           className="w-full overflow-y-auto rounded-xl border border-slate-200 shadow-sm lg:w-80 lg:shrink-0"
           style={{ maxHeight: 560 }}
         >
+          {selectedDestination && (
+            <DestinationPanel
+              destination={selectedDestination}
+              userLat={startPoint[0]}
+              userLon={startPoint[1]}
+              footRoute={footRoute}
+              footLoading={routeLoading}
+              activeMode={activeMode}
+              onModeChange={handleModeChange}
+              onClose={() => {
+                setSelectedDestId(null);
+                setActiveRouteCoords([]);
+                setFootRoute(null);
+              }}
+            />
+          )}
+
           {selectedGroup && (
             <div className="relative border-b border-slate-200 bg-slate-50 p-4">
               <button
@@ -292,6 +643,37 @@ export default function TrailMap() {
               {selectedGroup.totalLengthKm != null && (
                 <p className="mt-1 text-xs text-slate-400">{selectedGroup.totalLengthKm.toFixed(1)} km</p>
               )}
+            </div>
+          )}
+
+          {sortedDestinationList.length > 0 && (
+            <div className="border-b border-slate-200">
+              <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Turmål i nærheten
+              </p>
+              <ul className="divide-y divide-slate-100">
+                {sortedDestinationList.map(dest => (
+                  <li key={dest.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectDestination(dest)}
+                      className={[
+                        'w-full px-4 py-2.5 text-left transition hover:bg-amber-50',
+                        dest.id === selectedDestId ? 'bg-amber-50' : '',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="shrink-0 text-sm">{DESTINATION_ICONS[dest.destinationType]}</span>
+                        <span className="truncate text-sm font-medium text-slate-900">{dest.name}</span>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 pl-6 text-xs text-slate-500">
+                        {dest.elevationM != null && <span>{dest.elevationM} moh</span>}
+                        <span>· {formatDistance(dest.distanceM)}</span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -353,6 +735,16 @@ export default function TrailMap() {
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
+            checked={showDestinations}
+            onChange={(e) => setShowDestinations(e.target.checked)}
+            className="h-3.5 w-3.5"
+          />
+          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: DESTINATION_COLORS.peak }} />
+          Turmål
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
             checked={showSettlements}
             onChange={(e) => setShowSettlements(e.target.checked)}
             className="h-3.5 w-3.5"
@@ -360,6 +752,30 @@ export default function TrailMap() {
           <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: SETTLEMENT_COLOR }} />
           Tettsteder
         </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={hideShortTrails}
+            onChange={(e) => setHideShortTrails(e.target.checked)}
+            className="h-3.5 w-3.5"
+          />
+          Skjul korte ruter (&lt;1 km)
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={pinMode}
+            onChange={(e) => {
+              setPinMode(e.target.checked);
+              if (!e.target.checked) setPinPosition(null);
+            }}
+            className="h-3.5 w-3.5"
+          />
+          📍 Sett startpunkt
+        </label>
+        {pinMode && !pinPosition && (
+          <span className="text-xs text-slate-500 italic">Klikk på kartet for å plassere startpunktet</span>
+        )}
       </div>
     </div>
   );

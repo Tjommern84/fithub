@@ -1,8 +1,8 @@
 import Image from 'next/image';
-import { ButtonLink } from '../ui/Button';
+import ExploreActivitiesLink from '../ExploreActivitiesLink';
 import HeroTopNav from '../HeroTopNav';
 import HomeHeroSearchBar from './HomeHeroSearchBar';
-import { container } from '../../lib/ui';
+import { container, buttonForest } from '../../lib/ui';
 
 export default function HomeHero() {
   return (
@@ -39,9 +39,9 @@ export default function HomeHero() {
             Fithub er Norges aktivitetsplattform for alle aldre og nivåer.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href="/resultater" variant="forest">
+            <ExploreActivitiesLink className={buttonForest}>
               Utforsk aktiviteter
-            </ButtonLink>
+            </ExploreActivitiesLink>
             <a
               href="#hvordan-funker-det"
               className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/30 px-5 text-sm font-semibold text-white transition hover:bg-white/10"

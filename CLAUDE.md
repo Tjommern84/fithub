@@ -37,6 +37,7 @@ Next.js 14 App Router · React **18.2** · TypeScript · Supabase (PostgreSQL + 
 | `sql/01_postgis_and_search.sql` | `search_services()` — **opprinnelig** signatur (14 params). IKKE kilden til sannhet lenger — se gotcha under |
 | `CLAUDE.md` | Denne filen — prosjektets sannhetskilde |
 | `handoff.md` | Delt tavle mellom agenter |
+| `ROLLE_TESTER.md` | Rolledefinisjon for QA-/tester-agenten — lukker browser-avhengige verifiseringsgap mellom frontend/backend-leveranse og PM-arkivering |
 | `specs/active/` | Pågående feature-specs |
 | `specs/done/` | Arkiverte specs |
 | `.claude/skills/` | Domene-skills (00-index.md + 01–09) |
@@ -103,6 +104,41 @@ Nominatim kan returnere "Oslo, Norge" som `display_name` — uten dette finner `
   fikset i `sql/23_fix_search_services_overload.sql`). `CREATE OR REPLACE` erstatter KUN en funksjon med
   identisk parameterliste — en annen parameterliste skaper en ny, sameksisterende overload.
 - Behold `#variable_conflict use_column`-pragma øverst i funksjonskroppen
+- **Nåværende kjørende versjon: `sql/36_nearest_trails_spheroid_false.sql`** for `get_nearest_trails()`,
+  men `search_services()` selv sist endret i `sql/34_fix_search_late_projection.sql` — sjekk alltid
+  høyeste nummer for HVER funksjon separat, de oppdateres ikke alltid i samme fil.
+
+### PostGIS-ytelse: statement-timeout på "nærmeste"-søk (2026-06-22)
+**Symptom**: `search_services()` og `get_nearest_trails()` timet ut (`57014`) på helt vanlige
+nærmeste-søk uten noen kategori/tag-filter — bare lat/lon. Tre separate, kumulative rotårsaker,
+funnet kun via ekte `EXPLAIN ANALYZE` (gjetting traff feil to ganger før det):
+1. **Manglende GIST-indeks**: `services.base_location` hadde ALDRI en spatial indeks i noen
+   migrasjon (kun `service_coverage.radius_center` hadde det, og den coverage-typen har 0 rader i
+   prod — `type='city'` med 23 000+ rader er den faktiske hot path). Fikset i `sql/32`.
+2. **OR-disjunksjon hindret indeksbruk uansett**: `matched_coverage`-CTE-en hadde én
+   `WHERE (A OR B OR C OR D)` over fire urelaterte betingelsestyper — selv MED riktig indeks kan
+   Postgres-planleggeren ofte ikke bruke noen av dem effektivt i en slik kombinert disjunksjon.
+   **Skriv om til `UNION ALL` av isolerte sub-`SELECT`-er (én per gren) + `DISTINCT ON` på det
+   sammenslåtte resultatet** i stedet for én SELECT med OR — da kan hver gren bruke sin egen indeks
+   uavhengig. Fikset i `sql/33`.
+3. **Dyre per-rad-subqueries kjørt på HELE kandidatsettet før `LIMIT`**: `reasons`-kolonnen bygges
+   via en korrelert subquery i mål-listen — kjørte for ALLE ~3500 kandidater før `ORDER BY`+`LIMIT`
+   trimmet til de 50 som faktisk returneres. **Sorter og trim til `max_limit` i en egen CTE FØR de
+   dyre per-rad-feltene beregnes** — den ytterste `SELECT` skal lese fra det allerede begrensede
+   settet. Fikset i `sql/34`.
+4. **For `trails` spesifikt** (linjegeometri, 163 781 rader): avstand mot HELE linjen er dyrere enn
+   punkt-til-punkt. Brukte `ST_Collect(ST_StartPoint(...), ST_EndPoint(...))` som sammenligningspunkt
+   i stedet (`sql/35`) — men selv etter dette var eksakt `geography`-avstand (ellipsoide geodesic)
+   for tregt i volum på ~19 000 kandidater. **`use_spheroid=false`** på `ST_Distance`/`ST_DWithin`
+   (sfærisk i stedet for ellipsoide beregning, <0,5% presisjonstap, irrelevant for en "i
+   nærheten"-funksjon) løste resten. Fikset i `sql/36`.
+- **Generell lærdom**: en funksjonell GIST-indeks må matche query-uttrykket STRUKTURELT (samme
+  funksjonskall) for at planleggeren skal kunne bruke den — `geography` vs `geometry`-cast på
+  samme kolonne er IKKE samme indeks.
+- **Diagnostikk-metode som faktisk virket**: be bruker køre `SHOW statement_timeout;` +
+  `EXPLAIN (ANALYZE, BUFFERS)` direkte i Supabase SQL Editor og lime inn resultatet — `EXPLAIN`
+  på selve RPC-kallet viser kun en opak "Function Scan"-boks for PL/pgSQL-funksjoner; kjør den
+  INNERSTE spørringen isolert (uten funksjons-wrapper) for å se den faktiske indeksbruken.
 
 ### Resultatsside-design
 - Mørk kategori-header + gradientbar: les `catTheme` fra `getCategoryConfig(mainCategory)` i `page.tsx`

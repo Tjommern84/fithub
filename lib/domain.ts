@@ -68,4 +68,6 @@ export type Service = {
   website?: string | null;
   orgnr?: string | null;
   provider_type?: ProviderType;
+  lat?: number | null;
+  lon?: number | null;
 };

@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import AuthButton from './AuthButton';
 import ConditionalSearchBar from './ConditionalSearchBar';
+import ExploreActivitiesLink from './ExploreActivitiesLink';
 import { container } from '../lib/ui';
 
 export default function TopNav() {
@@ -14,9 +15,9 @@ export default function TopNav() {
           <span className="font-heading text-3xl font-bold tracking-wide text-white">fithub.no</span>
         </Link>
         <nav className="hidden items-center justify-center gap-6 md:flex">
-          <Link href="/resultater" className="text-2xl font-medium text-white/70 transition hover:text-white">
+          <ExploreActivitiesLink className="text-2xl font-medium text-white/70 transition hover:text-white">
             Utforsk aktiviteter
-          </Link>
+          </ExploreActivitiesLink>
           <Link href="/tilbydere" className="text-2xl font-medium text-white/70 transition hover:text-white">
             Tilbydere
           </Link>

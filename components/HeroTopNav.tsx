@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import AuthButton from './AuthButton';
+import ExploreActivitiesLink from './ExploreActivitiesLink';
 import { container } from '../lib/ui';
 
 // Transparent navigasjon som flyter over hero-bildet på forsiden — ingen bakgrunn,
@@ -14,9 +15,9 @@ export default function HeroTopNav() {
         <span className="font-heading text-3xl font-bold tracking-wide text-white">fithub.no</span>
       </Link>
       <nav className="hidden items-center justify-center gap-6 md:flex">
-        <Link href="/resultater" className="text-sm font-medium text-white transition hover:text-white/80">
+        <ExploreActivitiesLink className="text-sm font-medium text-white transition hover:text-white/80">
           Utforsk aktiviteter
-        </Link>
+        </ExploreActivitiesLink>
         <Link href="/tilbydere" className="text-sm font-medium text-white transition hover:text-white/80">
           Tilbydere
         </Link>

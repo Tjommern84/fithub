@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
@@ -31,6 +32,8 @@ import { Card } from '../../../components/ui/Card';
 import { Chip } from '../../../components/ui/Chip';
 import ReportIssueModal from '../../../components/ReportIssueModal';
 import { container, input, label } from '../../../lib/ui';
+
+const ProfileLocationMap = dynamic(() => import('../../../components/ProfileLocationMap'), { ssr: false });
 
 const goalLabels: Record<Goal, string> = {
   weight_loss: 'Vektnedgang',
@@ -445,6 +448,8 @@ export default function ProviderClient({ params, service: initialService, relate
               priority
               className="object-cover"
             />
+          ) : isFacility && service.lat != null && service.lon != null ? (
+            <ProfileLocationMap lat={service.lat} lon={service.lon} name={service.name} />
           ) : (
             <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700" />
           )}

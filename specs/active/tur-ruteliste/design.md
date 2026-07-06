@@ -82,3 +82,77 @@ sin egen rad — f.eks. "Gulskgen – Konnerudkollen" gjentatt 7+ ganger med uli
 `scripts/parse-geonorge-trails.ts`, `scripts/push-geonorge-trails.ts`) til å slå sammen segmenter i
 databasen — det er en mye større endring (krever geometrisk sammenslåing av LineStrings) og gir ingen
 ekstra verdi utover det klientsidig gruppering allerede løser for listevisningen.
+
+## Tillegg 2 (2026-06-22): koblings-basert gruppering for resterende ~30%
+
+**Undersøkt og avkreftet**: bruker foreslo å hente hele ruten via Geonorge sitt nedlastingsAPI i
+stedet for den fragmenterte dataen vi har. Avkreftet empirisk — `scripts/parse-geonorge-trails.ts`
+bekrefter at hver `<Fotrute>`/`<Sykkelrute>`/`<Skiløype>`-GML-feature ALLEREDE er et eget, komplett
+element med eget `rutenavn` — dette ER Turrutebasen sin offisielle datamodell (et nettverk av
+navngitte kant-segmenter), ikke noe nedlastingsAPI-et ville gitt en alternativ, sammenslått versjon
+av. Ingen ny import-kilde løser problemet.
+
+**Rotårsak for de resterende ~30%, bekreftet empirisk** (node-script mot ekte data, 1000 segmenter
+i et Oslo-område): blant 1092 par segmenter som FAKTISK deler et endepunkt (samme `trail_type`,
+fysisk sammenhengende) har 281 par (~26%) helt forskjellig `name` — sannsynlig årsak er at
+Turrutebasen samles inn kommune for kommune, og en rute som krysser en kommunegrense kan ha fått
+ulikt `rutenavn` på hver side. Case/diakritikk-varianter (f.eks. "Årvollåsen" vs "ÅRvollåsen")
+finnes også, men er sjeldne (1-2 per 1000) — ikke hovedårsaken.
+
+**Bekreftet av bruker med et konkret eksempel**: rundt Jarmyra (Jar, Bærum) er en rute delt opp i
+mange "Ukjent"-navngitte segmenter — disse er i dag BEVISST utelatt fra all gruppering (egen
+`id::${trail.id}`-fallback-nøkkel for `name === 'Ukjent'`). Bruker observerte samme fysiske
+sammenheng visuelt og foreslo selv koblings-basert kjeding.
+
+**Fiks — koblings-basert kjeding, lagt PÅ TOPP av eksisterende navne-gruppering:**
+- Etter at de eksisterende navne-baserte gruppene er bygget (uendret), kjør et nytt kjede-pass:
+  to grupper av SAMME `trailType` slås sammen hvis et segment i gruppe A deler et endepunkt
+  (innenfor ~30 m, ekte meter-avstand via Leaflet `distanceTo`, ikke naiv grad-avstand) med et
+  segment i gruppe B — uavhengig av om navnene matcher, og uavhengig av om ett/begge er "Ukjent".
+- **Sikkerhetsregel mot feil sammenslåing ved ekte kryss**: kjed KUN sammen hvis nøyaktig TO
+  segmenter (fra to forskjellige navnegrupper) møtes i det punktet. Hvis ≥3 segmenter fra
+  forskjellige navnegrupper møtes samme sted, er det sannsynligvis et reelt trekryss i en
+  marka/nettverk — IKKE slå sammen der. Bevisst konservativt: bedre å la noen ekte fortsettelser
+  stå ugruppert enn å slå sammen faktisk forskjellige ruter.
+- **Representativt navn for en kjedet gruppe**: navnet til den STØRSTE konstituerende
+  navne-undergruppen (flest segmenter). Hvis kjeden inkluderer "Ukjent"-segmenter sammen med
+  navngitte: bruk det ekte navnet (ikke "Ukjent") så lenge minst én undergruppe har et ekte navn.
+  Kun hvis HELE kjeden er "Ukjent" forblir gruppen "Ukjent" — fortsatt én rad i stedet for mange.
+- Ytelse: bruk et rutenett/bucket-oppslag på avrundede koordinater for endepunkt-matching, ikke en
+  naiv O(n²)-løkke over alle segmentpar — viewport er begrenset til typisk noen hundre–~2000
+  segmenter (samme PostgREST-cap som alltid), men en ren dobbel-løkke bør likevel unngås.
+- `fitBounds`/summert lengde/avstand utvides til å dekke ALLE segmenter i den ferdig kjedede
+  gruppen (samme mønster som eksisterende navne-gruppering, bare over et større sammenslått sett).
+- `selectedGroupKey` må være stabil for en sammenslått gruppe (deterministisk uavhengig av
+  beregningsrekkefølge — f.eks. sortert kombinasjon av de underliggende navne-grupperingsnøklene).
+
+**Ikke i scope**: kildedata/import-endring (uendret fra Tillegg 1), 100% perfekt gruppering (den
+konservative "kun-to-møtes"-regelen lar noen ekte edge-cases stå ugruppert, akseptert bevisst).
+
+**Verifiseringsnotat**: "Gulskgen – Konnerudkollen" (det opprinnelige eksempelet fra Tillegg 1) er
+ALLEREDE korrekt gruppert i dagens kode (bekreftet: alle 24 segmenter har identisk navn+type) —
+IKKE testpunkt for denne fiksen. Bruk Jarmyra-området (Jar, Bærum, ca. 59.91°N/10.54°E) i stedet.
+
+## Tillegg 3 (2026-06-22): skjul korte ruter (<1 km)
+
+**Bakgrunn**: etter Tillegg 2 (koblings-basert kjeding) klaget bruker over et rotete kart — mange
+korte, separate Geonorge-snutter visuelt oppå hverandre gjør det vanskelig å finne en lang,
+nylig importert UT.no-rute i samme område.
+
+**Fiks**: ny `hideShortTrails`-checkbox (default PÅ/skjult) i samme legend-rad som
+type-/Tettsteder-toggles. Filtrerer `chainedVisible.groups` på `totalLengthKm` (SAMLET lengde
+etter kjeding, ikke enkeltsegmenter — en lang rute bygget av mange korte segmenter, f.eks.
+"Gulskgen - Konnerudkollen", skal ikke brytes opp eller skjules siden den totalt er over 1 km).
+`totalLengthKm === null` (ingen segmenter i gruppen har lengdedata i kildedata) vises uansett —
+usikker lengde er ikke det samme som bekreftet kort. Samme filtrerte sett (`keptTrailIds`) brukes
+til både Polyline-rendering og listepanelet.
+
+**Verifisert mot ekte data**: "Gulskgen - Konnerudkollen" (35 segmenter, 3,81 km) og begge
+UT.no-rutene (8,73 km / 13,74 km) forblir synlige. I en testbbox ved Konnerud ville 160 av 202
+grupper (under 1 km) blitt skjult — betydelig opprydding.
+
+## Separat, lavere prioritet (egen oppgave senere, IKKE i denne rundens scope)
+"Aktiviteter nær deg" på forsiden (`components/home/HomeNearbyActivities.tsx`, bruker
+`getNearestTrails()`/`get_nearest_trails()`-RPC fra `lavterskel-naer-deg`-spec'en) viser samme
+turrute-navn flere ganger som separate kort — bekreftet av bruker med skjermbilde
+("Gulskgen – Konnerudkollen" ×3). Denne koden har ALDRI hatt gruppering bygget inn. Lagt i kø.

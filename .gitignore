@@ -56,6 +56,8 @@ data/wikipedia/
 
 # Raw source downloads for import scripts (large, regenerated on demand)
 filer/
+data/geofabrik/
+data/osm/
 
 # Scratch/personal files, not part of the codebase
 tilbakemeldinger/

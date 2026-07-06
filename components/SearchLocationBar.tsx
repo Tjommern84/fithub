@@ -4,11 +4,9 @@ import { useEffect, useRef, useState, useCallback, type FormEvent } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   useLocation,
-  LOCATION_STORAGE_KEY,
   type LocationState,
   type RadiusKm,
 } from '../lib/locationContext';
-import { cityCoordinates } from '../lib/matching';
 
 type Suggestion = {
   label: string;
@@ -26,14 +24,13 @@ const RADIUS_OPTIONS: { value: RadiusKm; label: string }[] = [
 ];
 
 const SMART_SEARCH_KEY = 'sdem_smart_search_v1';
-const GEO_PROMPT_KEY = 'sdem_geo_prompt_dismissed';
 
 function firstPart(label: string): string {
   return label.split(',')[0]?.trim() || label;
 }
 
 export default function SearchLocationBar() {
-  const { location, setLocation } = useLocation();
+  const { location, setLocation, geoPromptVisible, dismissGeoPrompt } = useLocation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -48,7 +45,6 @@ export default function SearchLocationBar() {
   const [isEditing, setIsEditing] = useState(true);
   const [radiusOpen, setRadiusOpen] = useState(false);
   const [pendingRadius, setPendingRadius] = useState<RadiusKm>(10);
-  const [geoPromptVisible, setGeoPromptVisible] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const radiusRef = useRef<HTMLDivElement | null>(null);
@@ -64,29 +60,6 @@ export default function SearchLocationBar() {
       localStorage.setItem(SMART_SEARCH_KEY, next ? '1' : '0');
       return next;
     });
-  }, []);
-
-  // Default til Oslo + vis GPS-prompt ved første lasting uten lagret lokasjon.
-  // Sjekker localStorage DIREKTE (ikke `location`-state) for å unngå et race mot
-  // LocationProvider sin egen gjenopprettings-useEffect (barn-effekter kjører før
-  // foreldre-effekter i React — uten denne sjekken ville vi alltid sett `location`
-  // som null på første render og overskrevet en faktisk lagret verdi med Oslo).
-  useEffect(() => {
-    const saved = localStorage.getItem(LOCATION_STORAGE_KEY);
-    if (saved) return;
-    setLocation({
-      label: 'Oslo',
-      city: 'oslo',
-      lat: cityCoordinates.oslo.lat,
-      lon: cityCoordinates.oslo.lon,
-      source: 'search',
-      radius: 10,
-    });
-    const dismissed = localStorage.getItem(GEO_PROMPT_KEY);
-    if (!dismissed && 'geolocation' in navigator) {
-      setGeoPromptVisible(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync compact/edit mode when context location loads (e.g. from localStorage restore)
@@ -135,7 +108,6 @@ export default function SearchLocationBar() {
   const persist = useCallback((next: LocationState | null) => {
     setLocation(next);
     setIsEditing(!next);
-    setGeoPromptVisible(false);
   }, [setLocation]);
 
   const applySuggestion = (item: Suggestion) => {
@@ -186,7 +158,6 @@ export default function SearchLocationBar() {
         persist({ label, city, lat, lon, source: 'gps', radius: pendingRadius });
         setQuery(label);
         setGeoLoading(false);
-        localStorage.setItem(GEO_PROMPT_KEY, '1');
       },
       (err) => {
         setGeoLoading(false);
@@ -197,8 +168,7 @@ export default function SearchLocationBar() {
   };
 
   const handleGeoPromptSkip = () => {
-    localStorage.setItem(GEO_PROMPT_KEY, '1');
-    setGeoPromptVisible(false);
+    dismissGeoPrompt();
   };
 
   const submitSmartSearch = useCallback(() => {

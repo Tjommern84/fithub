@@ -64,3 +64,46 @@ export async function getTrailsInBounds(bbox: BoundingBox, limit = 2000): Promis
     .map(rowToTrail)
     .filter((t): t is Trail => t !== null);
 }
+
+export type NearestTrail = {
+  id: string;
+  name: string | null;
+  trailType: TrailType;
+  lengthKm: number | null;
+  distanceKm: number;
+};
+
+type NearestTrailRow = {
+  id: string;
+  name: string | null;
+  trail_type: TrailType;
+  length_km: number | null;
+  distance_km: number;
+};
+
+// Punkt+radius-basert (i motsetning til getTrailsInBounds() sin viewport/bbox) — for
+// "nær deg"-bruk uten kart. RPC-en (get_nearest_trails, sql/31_nearest_trails.sql) er
+// IKKE kjørt mot databasen ennå ved skrivende stund — kaller MÅ feile gracefully
+// (tomt array), ikke kaste, til migrasjonen er kjørt manuelt av bruker.
+export async function getNearestTrails(
+  lat: number,
+  lon: number,
+  radiusKm: number,
+  limit: number
+): Promise<NearestTrail[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc('get_nearest_trails', {
+    p_lat: lat,
+    p_lon: lon,
+    p_radius_km: radiusKm,
+    p_limit: limit,
+  });
+  if (error || !data) return [];
+  return (data as NearestTrailRow[]).map((row) => ({
+    id: row.id,
+    name: row.name,
+    trailType: row.trail_type,
+    lengthKm: row.length_km,
+    distanceKm: row.distance_km,
+  }));
+}

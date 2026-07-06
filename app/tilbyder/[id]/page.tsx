@@ -30,6 +30,12 @@ const typeLabels: Record<Service['type'], string> = {
 const SERVICE_SELECT =
   'id, name, type, description, coverage, price_level, rating_avg, rating_count, tags, goals, venues, is_active, cover_image_url, logo_image_url, phone, email, website, address, provider_type';
 
+// lat/lon er nye, genererte kolonner (fra base_location) — migrasjonen er ikke nødvendigvis
+// kjørt i alle miljøer ennå. Et `.select()` på en ikke-eksisterende kolonne feiler HELE
+// spørringen i PostgREST (ikke bare de to feltene), så disse hentes i et eget select med
+// retry-uten-dem ved feil — samme mønster som searchServices() sin p_borough-retry.
+const SERVICE_SELECT_WITH_LOCATION = `${SERVICE_SELECT}, lat, lon`;
+
 const mapServiceRow = (row: Record<string, unknown>): Service => ({
   id: String(row.id ?? ''),
   name: String(row.name ?? ''),
@@ -50,6 +56,8 @@ const mapServiceRow = (row: Record<string, unknown>): Service => ({
   website: row.website ? String(row.website) : null,
   address: row.address ? String(row.address) : null,
   provider_type: row.provider_type === 'facility' ? 'facility' : 'business',
+  lat: typeof row.lat === 'number' ? row.lat : null,
+  lon: typeof row.lon === 'number' ? row.lon : null,
 });
 
 const normalizeServiceId = (rawId: string): string => {
@@ -68,11 +76,23 @@ const normalizeServiceId = (rawId: string): string => {
 const fetchServiceById = async (id: string): Promise<Service | null> => {
   if (!id || !supabase) return null;
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('services')
-      .select(SERVICE_SELECT)
+      .select(SERVICE_SELECT_WITH_LOCATION)
       .eq('id', id)
       .maybeSingle();
+
+    if (error) {
+      // Backward compatibility: lat/lon-migrasjonen er ikke kjørt ennå i dette miljøet —
+      // retry uten dem i stedet for å la HELE tilbyder-siden vise "ingen tilbyder".
+      const legacy = await supabase
+        .from('services')
+        .select(SERVICE_SELECT)
+        .eq('id', id)
+        .maybeSingle();
+      if (!legacy.data) return null;
+      return mapServiceRow(legacy.data as Record<string, unknown>);
+    }
 
     if (!data) return null;
     return mapServiceRow(data as Record<string, unknown>);

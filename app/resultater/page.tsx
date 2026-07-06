@@ -10,6 +10,7 @@ import { parseMainCategory, CATEGORY_LABELS, getCategoryConfig } from '../../lib
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 import { fetchGroupSessions } from '../../lib/groupSessions';
 import type { GroupSession } from '../../lib/groupSessions';
+import { logError } from '../../lib/errorLogger';
 import ResultsView from './ResultsView';
 
 export const dynamic = 'force-dynamic';
@@ -175,13 +176,28 @@ export default async function ResultsPage({
       groupSessions = sessions;
     } catch (err) {
       console.error('[ResultsPage] searchServices failed:', err);
-      if (err instanceof Error) {
-        fetchError = err.message;
-      } else if (err && typeof err === 'object' && 'message' in err) {
-        fetchError = String((err as { message?: unknown }).message ?? 'Ukjent feil');
-      } else {
-        fetchError = 'Ukjent feil';
-      }
+      const fetchErrorMsg = err instanceof Error
+        ? err.message
+        : err && typeof err === 'object' && 'message' in err
+          ? String((err as { message?: unknown }).message ?? 'Ukjent feil')
+          : 'Ukjent feil';
+
+      void logError({
+        source: 'route',
+        context: 'search_services_rpc',
+        message: fetchErrorMsg,
+        stack: err instanceof Error ? err.stack : undefined,
+        metadata: {
+          city: resolvedCity,
+          lat,
+          lon,
+          mainCategory,
+          serviceType: serviceType !== 'any' ? serviceType : undefined,
+          query: rawQuery || undefined,
+        },
+      });
+
+      fetchError = fetchErrorMsg;
     }
   }
 

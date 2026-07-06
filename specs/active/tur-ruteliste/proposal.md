@@ -20,9 +20,16 @@ Brukeren ønsket en oversikt over nærliggende turer med distanse og detaljer, i
 - Endring av tettsted-laget (uberørt)
 
 ## Suksesskriterier
-- [ ] Type-checkboxes skjuler/viser samtidig både kartlinjer og listeoppføringer for den typen
-- [ ] Listen er sortert nærmest-først relativt til brukerens posisjon
-- [ ] Klikk på en rute sentrerer/zoomer kartet til ruten, fremhever den, demper andre, og viser korrekt infoboks
-- [ ] Panorering/zooming oppdaterer listen automatisk via eksisterende bbox-henting — ingen ny fetch-logikk
-- [ ] Responsiv: sidepanel ved siden av kartet på desktop, stables under på mobil
-- [ ] `npx tsc --noEmit` grønt
+- [x] Type-checkboxes skjuler/viser samtidig både kartlinjer og listeoppføringer for den typen
+- [x] Listen er sortert nærmest-først relativt til brukerens posisjon
+- [x] Klikk på en rute sentrerer/zoomer kartet til ruten, fremhever den, demper andre, og viser korrekt infoboks
+- [x] Panorering/zooming oppdaterer listen automatisk via eksisterende bbox-henting — ingen ny fetch-logikk
+- [x] Responsiv: sidepanel ved siden av kartet på desktop, stables under på mobil
+- [x] `npx tsc --noEmit` grønt
+- [x] **Tillegg (oppdaget under visuell test, 2026-06-18/22)**: fysisk sammenhengende rute-segmenter
+      vises som én listeoppføring, ikke gjentatt — løst i to runder: navne-basert gruppering
+      (~70%, runde 1) + koblings-basert kjeding for resten (segmenter med ulikt navn eller
+      "Ukjent" som fysisk møtes, runde 2). Verifisert mot ekte data ved Jarmyra (269 segmenter,
+      179→83 grupper, kjente kryss korrekt IKKE sammenslått) — via frittstående script siden
+      frontend-agenten ikke har browser-tilgang. **Ekte klikk/highlight-interaksjon i browser
+      ikke bekreftet av bruker ennå**
