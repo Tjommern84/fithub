@@ -1,39 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const WINDOW_MS = 60_000
-const MAX_REQUESTS = 30
-
-const counts = new Map<string, { n: number; reset: number }>()
+const BAD_UA_PATTERNS = [
+  'python', 'curl/', 'wget/', 'go-http-client', 'java/', 'jakarta',
+  'okhttp', 'scrapy', 'libwww-perl', 'ruby/', 'php/',
+  'node-fetch', 'axios/', 'got/', 'undici', 'httpx', 'aiohttp',
+  'colly', 'mechanize', 'httpclient', 'pycurl', 'perl/',
+]
 
 export function middleware(req: NextRequest) {
-  const ip =
-    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
-    req.headers.get('x-real-ip') ??
-    'unknown'
+  const ua = (req.headers.get('user-agent') ?? '').toLowerCase()
 
-  const now = Date.now()
-  const entry = counts.get(ip)
-
-  if (!entry || now > entry.reset) {
-    counts.set(ip, { n: 1, reset: now + WINDOW_MS })
-    return NextResponse.next()
+  if (!ua) {
+    return new NextResponse('Forbidden', { status: 403 })
   }
 
-  entry.n++
-
-  if (entry.n > MAX_REQUESTS) {
-    return new NextResponse('Too Many Requests', {
-      status: 429,
-      headers: {
-        'Retry-After': String(Math.ceil((entry.reset - now) / 1000)),
-        'Content-Type': 'text/plain',
-      },
-    })
+  if (BAD_UA_PATTERNS.some(p => ua.includes(p))) {
+    return new NextResponse('Forbidden', { status: 403 })
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/tilbyder/:path*', '/resultater/:path*'],
+  matcher: ['/tilbyder/:path*', '/resultater/:path*', '/api/:path*'],
 }
