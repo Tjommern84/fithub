@@ -11,6 +11,8 @@ import { isSupabaseConfigured } from '../../lib/supabaseClient';
 import { fetchGroupSessions } from '../../lib/groupSessions';
 import type { GroupSession } from '../../lib/groupSessions';
 import { logError } from '../../lib/errorLogger';
+import CategoryHero from '../../components/CategoryHero';
+import FloatingFilterBar from '../../components/FloatingFilterBar';
 import ResultsView from './ResultsView';
 
 export const dynamic = 'force-dynamic';
@@ -51,11 +53,7 @@ export async function generateMetadata({
   return {
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      type: 'website',
-    },
+    openGraph: { title, description, type: 'website' },
   };
 }
 
@@ -66,18 +64,18 @@ export default async function ResultsPage({
 }) {
   // ── Parse params ──────────────────────────────────────────────────────────
 
-  const rawCat     = typeof searchParams.cat      === 'string' ? searchParams.cat      : '';
-  const rawTags    = typeof searchParams.tags     === 'string' ? searchParams.tags     : '';
-  const rawType    = typeof searchParams.type     === 'string' ? searchParams.type     : '';
-  const rawVenue   = typeof searchParams.venue    === 'string' ? searchParams.venue    : '';
+  const rawCat      = typeof searchParams.cat      === 'string' ? searchParams.cat      : '';
+  const rawTags     = typeof searchParams.tags     === 'string' ? searchParams.tags     : '';
+  const rawType     = typeof searchParams.type     === 'string' ? searchParams.type     : '';
+  const rawVenue    = typeof searchParams.venue    === 'string' ? searchParams.venue    : '';
   const rawLocation = typeof searchParams.location === 'string' ? searchParams.location : '';
-  const rawCity    = typeof searchParams.city     === 'string' ? searchParams.city     : '';
-  const rawSort   = typeof searchParams.sort   === 'string' ? searchParams.sort   : '';
-  const rawQuery  = typeof searchParams.q      === 'string' ? searchParams.q      : '';
-  const rawRadius = typeof searchParams.radius === 'string' ? parseInt(searchParams.radius, 10) : NaN;
-  const radiusKm  = !Number.isNaN(rawRadius) && rawRadius > 0 ? rawRadius : 10;
-  const rawPage   = typeof searchParams.page === 'string' ? parseInt(searchParams.page, 10) : NaN;
-  const page      = !Number.isNaN(rawPage) && rawPage > 0 ? rawPage : 1;
+  const rawCity     = typeof searchParams.city     === 'string' ? searchParams.city     : '';
+  const rawSort     = typeof searchParams.sort     === 'string' ? searchParams.sort     : '';
+  const rawQuery    = typeof searchParams.q        === 'string' ? searchParams.q        : '';
+  const rawRadius   = typeof searchParams.radius   === 'string' ? parseInt(searchParams.radius, 10) : NaN;
+  const radiusKm    = !Number.isNaN(rawRadius) && rawRadius > 0 ? rawRadius : 10;
+  const rawPage     = typeof searchParams.page     === 'string' ? parseInt(searchParams.page, 10) : NaN;
+  const page        = !Number.isNaN(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const mainCategory = parseMainCategory(rawCat);
   const serviceType  = parseServiceType(rawType);
@@ -187,72 +185,50 @@ export default async function ResultsPage({
         context: 'search_services_rpc',
         message: fetchErrorMsg,
         stack: err instanceof Error ? err.stack : undefined,
-        metadata: {
-          city: resolvedCity,
-          lat,
-          lon,
-          mainCategory,
-          serviceType: serviceType !== 'any' ? serviceType : undefined,
-          query: rawQuery || undefined,
-        },
+        metadata: { city: resolvedCity, lat, lon, mainCategory, serviceType: serviceType !== 'any' ? serviceType : undefined, query: rawQuery || undefined },
       });
 
       fetchError = fetchErrorMsg;
     }
   }
 
-
   // ── Render ────────────────────────────────────────────────────────────────
 
-  const catTheme = mainCategory ? getCategoryConfig(mainCategory)?.theme : null;
+  const catConfig = mainCategory ? getCategoryConfig(mainCategory) ?? null : null;
+  const resultCount = results.length + unanchoredResults.length;
+  const effectiveSort = !rawSort && lat !== undefined && lon !== undefined ? 'nearest' : rawSort;
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="min-h-screen bg-brand-beige">
 
-      {/* ── Category header ──────────────────────────────────────────────── */}
-      {catTheme ? (
-        <div style={{ background: catTheme.headerBg, position: 'relative' }}>
-          {/* Accent bar */}
-          <div
-            style={{
-              position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
-              background: `linear-gradient(90deg, ${catTheme.barStart}, ${catTheme.barEnd})`,
-            }}
+      {/* ── Hero ────────────────────────────────────────────────────────── */}
+      <CategoryHero
+        catConfig={catConfig}
+        locationLabel={locationLabel}
+        resultCount={resultCount}
+      />
+
+      {/* ── Flytende filterbar — overlapper hero-bunnen ──────────────── */}
+      <div className="relative z-bar -mt-8 px-4 pb-4">
+        <div className="mx-auto max-w-4xl">
+          <FloatingFilterBar
+            catKey={rawCat}
+            initialQuery={rawQuery}
+            initialRadius={radiusKm}
+            currentLat={lat}
+            currentLon={lon}
+            currentLocation={locationLabel}
+            currentCity={resolvedCity}
+            currentTags={rawTags || undefined}
+            currentSort={effectiveSort || undefined}
           />
-          <div className="max-w-5xl mx-auto px-4 pt-7 pb-6">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 text-xs mb-5"
-              style={{ color: catTheme.subColor }}
-            >
-              ← Tilbake
-            </Link>
-            <h1
-              className="font-barlow text-4xl font-bold leading-tight"
-              style={{ color: catTheme.titleColor, letterSpacing: '-0.01em' }}
-            >
-              {categoryLabel}
-            </h1>
-            {locationLabel && (
-              <p className="mt-1 text-sm" style={{ color: catTheme.subColor }}>
-                Nær {locationLabel}
-              </p>
-            )}
-          </div>
         </div>
-      ) : (
-        <div className="max-w-5xl mx-auto px-4 py-8">
-          <Link href="/" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 mb-6">
-            ← Tilbake
-          </Link>
-          <h1 className="text-3xl font-bold text-slate-900 mb-6">{categoryLabel}</h1>
-        </div>
-      )}
+      </div>
 
-      {/* ── Results ──────────────────────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      {/* ── Resultater ──────────────────────────────────────────────────── */}
+      <div className="mx-auto max-w-5xl px-4 pb-12 pt-2">
         {fetchError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             Kunne ikke hente resultater: {fetchError}
           </div>
         ) : (

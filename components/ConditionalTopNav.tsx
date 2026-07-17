@@ -3,11 +3,12 @@
 import { usePathname } from 'next/navigation';
 import TopNav from './TopNav';
 
-// Forsiden bygger sin egen transparente navigasjon inni HomeHero (flyter over
-// hero-bildet) — den vanlige mørke, sticky TopNav skal ikke også rendres der.
-// Alle andre sider er uendret.
+// Disse sidene bygger sin egen transparente ScrollAwareTopNav inni sin hero —
+// den vanlige mørke, sticky TopNav skal ikke rendres der.
+const HERO_PATHS = ['/', '/resultater', '/tur'];
+
 export default function ConditionalTopNav() {
   const pathname = usePathname();
-  if (pathname === '/') return null;
+  if (HERO_PATHS.includes(pathname)) return null;
   return <TopNav />;
 }

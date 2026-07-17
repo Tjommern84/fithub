@@ -465,11 +465,13 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   return (
     <div className="w-full">
       <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm lg:flex-1" style={{ height: 560 }}>
+        <div className="w-full overflow-hidden rounded-2xl border border-slate-200 shadow-sm lg:flex-1" style={{ height: 560 }}>
           <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              subdomains="abcd"
+              maxZoom={19}
             />
 
             <BoundsWatcher onChange={handleBoundsChange} />
@@ -605,7 +607,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
         </div>
 
         <div
-          className="w-full overflow-y-auto rounded-xl border border-slate-200 shadow-sm lg:w-80 lg:shrink-0"
+          className="w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm lg:w-80 lg:shrink-0"
           style={{ maxHeight: 560 }}
         >
           {selectedDestination && (
@@ -626,7 +628,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
           )}
 
           {selectedGroup && (
-            <div className="relative border-b border-slate-200 bg-slate-50 p-4">
+            <div className="relative border-b border-slate-100 bg-brand-cream p-4">
               <button
                 type="button"
                 onClick={() => setSelectedGroupKey(null)}
@@ -635,13 +637,22 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
               >
                 ✕
               </button>
-              <p className="pr-6 font-semibold text-sm leading-snug">{selectedGroup.name ?? 'Ukjent rute'}</p>
-              <p className="mt-0.5 text-xs text-slate-500">{TRAIL_LABELS[selectedGroup.trailType]}</p>
+              <p className="pr-6 font-heading text-sm font-bold leading-snug text-slate-900">
+                {selectedGroup.name ?? 'Ukjent rute'}
+              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
+                  style={{ backgroundColor: TRAIL_COLORS[selectedGroup.trailType] }}
+                >
+                  {TRAIL_LABELS[selectedGroup.trailType]}
+                </span>
+                {selectedGroup.totalLengthKm != null && (
+                  <span className="text-xs text-slate-500">{selectedGroup.totalLengthKm.toFixed(1)} km</span>
+                )}
+              </div>
               {selectedGroup.maintainer && (
-                <p className="text-xs text-slate-500">{selectedGroup.maintainer}</p>
-              )}
-              {selectedGroup.totalLengthKm != null && (
-                <p className="mt-1 text-xs text-slate-400">{selectedGroup.totalLengthKm.toFixed(1)} km</p>
+                <p className="mt-1 text-xs text-slate-400">{selectedGroup.maintainer}</p>
               )}
             </div>
           )}
@@ -684,34 +695,46 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
           ) : groupedTrailList.length === 0 ? (
             <p className="p-4 text-sm text-slate-500">Ingen ruter i dette området.</p>
           ) : (
-            <ul className="divide-y divide-slate-100">
-              {groupedTrailList.map((group) => (
-                <li key={group.key}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGroupKey(group.key)}
-                    className={[
-                      'w-full px-4 py-3 text-left transition hover:bg-slate-50',
-                      group.key === selectedGroupKey ? 'bg-slate-100' : '',
-                    ].join(' ')}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: TRAIL_COLORS[group.trailType] }}
-                      />
-                      <span className="truncate text-sm font-medium text-slate-900">
-                        {group.name ?? 'Ukjent rute'}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
-                      <span>{TRAIL_LABELS[group.trailType]}</span>
-                      {group.totalLengthKm != null && <span>· {group.totalLengthKm.toFixed(1)} km</span>}
-                      <span>· {formatDistance(group.distanceM)}</span>
-                    </div>
-                  </button>
-                </li>
-              ))}
+            <ul className="space-y-1.5 p-2">
+              {groupedTrailList.map((group) => {
+                const isSelected = group.key === selectedGroupKey;
+                return (
+                  <li key={group.key}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGroupKey(group.key)}
+                      className={[
+                        'w-full rounded-xl border p-3 text-left transition-all',
+                        isSelected
+                          ? 'border-brand-copper bg-brand-cream ring-1 ring-brand-copper'
+                          : 'border-slate-100 bg-white shadow-sm hover:border-slate-200 hover:shadow',
+                      ].join(' ')}
+                    >
+                      <div className="flex items-start gap-2">
+                        <span
+                          className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: TRAIL_COLORS[group.trailType] }}
+                        />
+                        <span className="truncate text-sm font-medium text-slate-900">
+                          {group.name ?? 'Ukjent rute'}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-4">
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+                          style={{ backgroundColor: TRAIL_COLORS[group.trailType] }}
+                        >
+                          {TRAIL_LABELS[group.trailType]}
+                        </span>
+                        {group.totalLengthKm != null && (
+                          <span className="text-[11px] text-slate-500">{group.totalLengthKm.toFixed(1)} km</span>
+                        )}
+                        <span className="text-[11px] text-slate-400">{formatDistance(group.distanceM)}</span>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

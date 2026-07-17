@@ -45,14 +45,15 @@ type Props = {
   radiusKm: number;
   services: RankedService[];
   locationLabel?: string | null;
+  height?: number;
 };
 
-export default function ServiceMap({ center, radiusKm, services, locationLabel }: Props) {
+export default function ServiceMap({ center, radiusKm, services, locationLabel, height = 360 }: Props) {
   const centerLatLng: [number, number] = [center.lat, center.lon];
   const servicesWithCoords = services.filter((s) => s.lat != null && s.lon != null);
 
   return (
-    <div className="w-full rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: 360 }}>
+    <div className="w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm" style={{ height }}>
       <MapContainer
         center={centerLatLng}
         zoom={12}

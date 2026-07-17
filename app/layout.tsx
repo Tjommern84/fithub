@@ -1,6 +1,7 @@
 ﻿import './globals.css';
 import type { ReactNode } from 'react';
 import { Barlow_Condensed, Outfit, DM_Sans } from 'next/font/google';
+import Script from 'next/script';
 import ConsentGate from '../components/ConsentGate';
 import ConditionalTopNav from '../components/ConditionalTopNav';
 import Footer from '../components/Footer';
@@ -58,6 +59,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
           <ConsentGate />
         </LocationProvider>
+        <Script
+          data-goatcounter="https://tjommern.goatcounter.com/count"
+          src="//gc.zgo.at/count.js"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
