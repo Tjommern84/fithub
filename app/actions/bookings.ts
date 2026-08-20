@@ -1,6 +1,5 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
 import { BookingItem, BookingStatus, CancellationType, formatBookingTime } from '../../lib/booking';
 import { sendEmail, isEmailConfigured } from '../../lib/emailClient';
 import {
@@ -12,18 +11,8 @@ import { logError } from '../../lib/errorLogger';
 import { generateIcsContent } from '../../lib/ics';
 import { wrapServerAction } from '../../lib/actionWrapper';
 import { getServiceSupabase } from '../../lib/serviceSupabase';
+import { getUserSupabase } from '../../lib/userSupabase';
 import { shouldSendEmail } from '../../lib/notificationPreferences';
-
-const getSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-};
 
 const parseScheduledAt = (value: string): string | null => {
   const parsed = new Date(value);
@@ -65,7 +54,7 @@ const logQualityEvent = async (payload: {
 };
 
 export async function getMyBookings(accessToken: string) {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !accessToken) {
     return { customerBookings: [], providerBookings: [] };
   }
@@ -174,17 +163,17 @@ const createBookingHandler = async (
   _prevState: { ok: boolean; message: string },
   formData: FormData
 ): Promise<{ ok: boolean; message: string }> => {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const leadId = String(formData.get('leadId') ?? '');
   const scheduledRaw = String(formData.get('scheduledAt') ?? '');
 
   if (!accessToken || !leadId || !scheduledRaw) {
     return { ok: false, message: 'Manglende data for booking.' };
+  }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   const scheduledAt = parseScheduledAt(scheduledRaw);
@@ -261,16 +250,16 @@ const cancelBookingHandler = async (
   _prevState: { ok: boolean; message: string },
   formData: FormData
 ): Promise<{ ok: boolean; message: string }> => {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const bookingId = String(formData.get('bookingId') ?? '');
 
   if (!accessToken || !bookingId) {
     return { ok: false, message: 'Manglende data for avlysning.' };
+  }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -390,16 +379,16 @@ const markNoShowHandler = async (
   _prevState: { ok: boolean; message: string },
   formData: FormData
 ): Promise<{ ok: boolean; message: string }> => {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const bookingId = String(formData.get('bookingId') ?? '');
 
   if (!accessToken || !bookingId) {
     return { ok: false, message: 'Manglende data for no-show.' };
+  }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);

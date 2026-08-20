@@ -1,18 +1,10 @@
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { configureLeafletIcons } from '../lib/leafletIcons';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 
-// Fix default marker icons broken by webpack — kopiert fra ServiceMap.tsx (ikke importert,
-// siden den filen har en annen prop-kontrakt bygget for søkeresultater med flere markører +
-// brukerposisjon + radius-sirkel + FitBounds — ikke relevant for et enkelt profil-kartutsnitt).
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+configureLeafletIcons();
 
 type Props = {
   lat: number;

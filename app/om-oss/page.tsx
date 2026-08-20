@@ -4,29 +4,36 @@ import { container } from '../../lib/ui';
 
 export const metadata: Metadata = {
   title: 'Om oss – FitHub',
-  description: 'FitHub kobler deg med treningssentre, personlige trenere, gruppetimer og friluftsaktiviteter over hele Norge.',
+  description: 'FitHub hjelper deg finne trening og aktivitet i nærheten.',
 };
 
 export default function OmOssPage() {
   return (
     <main className={`${container} py-16`}>
-      <h1 className="font-heading text-3xl font-extrabold text-brand-forest">Om oss</h1>
-      <p className="mt-4 max-w-2xl text-sm text-slate-600">
-        FitHub er en nordisk aktivitetsplattform som gjør det enkelt å finne treningssenter,
-        personlig trener, gruppetimer og friluftsaktiviteter nær deg — gratis og uforpliktende.
-        Vi formidler kontakt mellom deg og lokale tilbydere, uten mellomledd og uten binding.
-      </p>
-      <p className="mt-4 max-w-2xl text-sm text-slate-600">
-        Tjenesten er under aktiv utvikling. Har du tilbakemeldinger eller ønsker å samarbeide med
-        oss, hører vi gjerne fra deg på{' '}
-        <a href="mailto:post@fithub.no" className="font-semibold text-brand-copper hover:underline">
-          post@fithub.no
-        </a>
-        .
+      <h1 className="font-heading text-3xl font-extrabold text-brand-forest">Om FitHub</h1>
+
+      <p className="mt-6 max-w-2xl text-base text-slate-700">
+        FitHub er en søketjeneste som hjelper deg finne trening og aktivitet i nærheten — treningssentre,
+        idrettslag, personlige trenere, gruppetrening og turruter over hele Norge.
       </p>
 
-      <Link href="/" className="mt-8 inline-flex text-sm font-semibold text-slate-700 underline">
-        Tilbake til forsiden
+      <p className="mt-4 max-w-2xl text-base text-slate-600">
+        Tjenesten er under utvikling. Vi legger fortløpende til nye tilbydere og forbedrer
+        søkeresultatene.
+      </p>
+
+      <div className="mt-8 border-t border-slate-200 pt-8">
+        <p className="text-sm font-semibold uppercase tracking-wide text-slate-400">Kontakt</p>
+        <a
+          href="mailto:tjommern@gmail.com"
+          className="mt-2 inline-block text-base font-semibold text-brand-copper hover:underline"
+        >
+          tjommern@gmail.com
+        </a>
+      </div>
+
+      <Link href="/" className="mt-10 inline-flex text-sm font-semibold text-slate-600 hover:underline">
+        ← Tilbake til forsiden
       </Link>
     </main>
   );

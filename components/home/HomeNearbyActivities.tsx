@@ -68,19 +68,20 @@ type NearbyCard =
 
 export default function HomeNearbyActivities() {
   const { location } = useLocation();
-  const [cards, setCards] = useState<NearbyCard[] | null>(null);
-  const [hasError, setHasError] = useState(false);
+  const locationKey = location ? `${location.lat}:${location.lon}` : '';
+  const [result, setResult] = useState<{
+    locationKey: string;
+    cards: NearbyCard[];
+    hasError: boolean;
+  }>({ locationKey: '', cards: [], hasError: false });
+  const cards = result.locationKey === locationKey ? result.cards : null;
+  const hasError = result.locationKey === locationKey && result.hasError;
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!location) {
-      setCards(null);
-      setHasError(false);
-      return;
-    }
+    if (!location) return;
     let cancelled = false;
-    setHasError(false);
-    setCards(null);
+    let serviceError = false;
 
     // searchServices() kaster ved RPC-feil — fanget her, ikke latt boble til en error boundary.
     // getNearestTrails() feiler gracefully til [] internt (RPC ikke kjørt mot DB ennå) —
@@ -89,7 +90,7 @@ export default function HomeNearbyActivities() {
       searchServices({ lat: location.lat, lon: location.lon, sort: 'nearest', radiusKm: 30, limit: 50 })
         .then((results) => results.filter((item) => item.service.provider_type === 'facility'))
         .catch(() => {
-          if (!cancelled) setHasError(true);
+          serviceError = true;
           return [] as RankedService[];
         }),
       getNearestTrails(location.lat, location.lon, 30, 10),
@@ -110,13 +111,17 @@ export default function HomeNearbyActivities() {
         const bDist = b.distanceKm ?? Number.POSITIVE_INFINITY;
         return aDist - bDist;
       });
-      setCards(merged.slice(0, 10));
+      setResult({
+        locationKey,
+        cards: merged.slice(0, 10),
+        hasError: serviceError,
+      });
     });
 
     return () => {
       cancelled = true;
     };
-  }, [location]);
+  }, [location, locationKey]);
 
   // Lokal placeholder — ingen backend-lagring av favoritter ennå
   const toggleFavorite = (id: string) => {

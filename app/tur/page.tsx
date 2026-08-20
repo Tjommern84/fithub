@@ -1,31 +1,28 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import dynamic from 'next/dynamic';
 import ScrollAwareTopNav from '../../components/ScrollAwareTopNav';
-import { container } from '../../lib/ui';
-
-const TrailMap = dynamic(() => import('../../components/TrailMap'), { ssr: false });
+import TrailMap from '../../components/TrailMapClient';
 
 export const metadata: Metadata = {
   title: 'Tur, ski og sykkelruter | FitHub',
   description: 'Utforsk fotruter, skiløyper og sykkelruter fra Geonorge sin Turrutebase.',
 };
 
-export default function TurPage({
-  searchParams,
+export default async function TurPage({
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = await searchParamsPromise;
   const initialDestId = typeof searchParams.dest === 'string' ? searchParams.dest : undefined;
 
   return (
     <main className="min-h-screen bg-brand-beige">
 
-      {/* ── Hero-strip ────────────────────────────────────────────────── */}
-      <section className="relative isolate overflow-hidden" style={{ minHeight: 280 }}>
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <section className="relative isolate overflow-hidden min-h-[260px] sm:min-h-[340px]">
         <ScrollAwareTopNav />
 
-        {/* Bakgrunnsbilde */}
         <div className="absolute inset-0 z-0">
           <Image
             src="/bilder/tur/pexels-imagevain-2346018.webp"
@@ -37,15 +34,12 @@ export default function TurPage({
           />
         </div>
 
-        {/* Mørk overlay */}
-        <div className="absolute inset-0 z-[1] bg-gradient-to-r from-brand-forest/80 via-brand-forest/45 to-brand-forest/10" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-r from-brand-forest/85 via-brand-forest/50 to-brand-forest/10" />
 
-        {/* Innhold */}
         <div
-          className={`${container} relative z-10 flex flex-col justify-end pb-10 pt-32`}
-          style={{ minHeight: 280 }}
+          className="relative z-10 mx-auto w-full max-w-[1440px] px-8 lg:px-12 flex flex-col justify-end pb-10 pt-32 min-h-[260px] sm:min-h-[340px]"
         >
-          <div className="max-w-[520px]">
+          <div className="max-w-[560px]">
             <h1 className="font-heading text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
               Tur, ski og sykkelruter
             </h1>
@@ -57,7 +51,7 @@ export default function TurPage({
       </section>
 
       {/* ── Kart ─────────────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-5xl px-4 py-8">
+      <div className="mx-auto max-w-[1440px] px-8 lg:px-12 py-8">
         <TrailMap initialDestId={initialDestId} />
       </div>
     </main>

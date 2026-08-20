@@ -1,7 +1,8 @@
+import { Suspense } from 'react';
 import Image from 'next/image';
 import ExploreActivitiesLink from '../ExploreActivitiesLink';
 import HeroTopNav from '../HeroTopNav';
-import HomeHeroSearchBar from './HomeHeroSearchBar';
+import SearchLocationBar from '../SearchLocationBar';
 import { container, buttonForest } from '../../lib/ui';
 
 export default function HomeHero() {
@@ -25,10 +26,15 @@ export default function HomeHero() {
       {/* Navigasjon — z-30, helt transparent, flyter over bildet */}
       <div className="absolute inset-x-0 top-0 z-30">
         <HeroTopNav />
+        <div className={`${container} pb-3`}>
+          <Suspense fallback={<div className="h-10" />}>
+            <SearchLocationBar />
+          </Suspense>
+        </div>
       </div>
 
       {/* Hero-tekst + CTA — z-10 */}
-      <div className={`${container} relative z-10 flex min-h-[85vh] flex-col justify-center pb-32 pt-24 sm:min-h-[90vh] sm:pb-40`}>
+      <div className={`${container} relative z-10 flex min-h-[85vh] flex-col justify-center pb-16 pt-32 sm:min-h-[90vh] sm:pb-20 sm:pt-36`}>
         <div className="max-w-[620px]">
           <h1 className="font-heading text-5xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl">
             <span className="block">Oppdag aktiviteter.</span>
@@ -52,12 +58,6 @@ export default function HomeHero() {
         </div>
       </div>
 
-      {/* Flytende søkefelt — z-20, 24-40px over bunnen av hero */}
-      <div className={`${container} absolute inset-x-0 bottom-6 z-20 sm:bottom-10`}>
-        <div className="mx-auto max-w-4xl">
-          <HomeHeroSearchBar />
-        </div>
-      </div>
     </section>
   );
 }

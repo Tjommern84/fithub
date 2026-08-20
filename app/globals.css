@@ -9,3 +9,43 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Leaflet zoom controls — white rounded buttons with soft shadow */
+.leaflet-bar {
+  border: none !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.13) !important;
+}
+
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background-color: #ffffff;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 30px;
+  width: 30px;
+  height: 30px;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none;
+}
+
+.leaflet-bar a:hover {
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+.leaflet-touch .leaflet-bar {
+  border: none !important;
+  border-radius: 12px !important;
+}
+
+.leaflet-touch .leaflet-bar a {
+  width: 34px;
+  height: 34px;
+  line-height: 34px;
+}

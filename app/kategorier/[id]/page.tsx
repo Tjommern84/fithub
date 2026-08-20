@@ -7,10 +7,11 @@ import { container } from '../../../lib/ui';
 import { getCategoryById, getServicesByCategory } from '../../actions/curation';
 
 export async function generateMetadata({
-  params,
+  params: paramsPromise,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  const params = await paramsPromise;
   const category = await getCategoryById(params.id);
   if (!category) {
     return {
@@ -25,12 +26,13 @@ export async function generateMetadata({
 }
 
 export default async function CategoryPage({
-  params,
-  searchParams,
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
 }: {
-  params: { id: string };
-  searchParams?: { q?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
+  const [params, searchParams] = await Promise.all([paramsPromise, searchParamsPromise]);
   const category = await getCategoryById(params.id);
   if (!category) {
     return (

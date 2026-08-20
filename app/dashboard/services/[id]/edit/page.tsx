@@ -1,8 +1,9 @@
 ﻿'use client';
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import { use, useActionState, useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useFormState, useFormStatus } from 'react-dom';
+import Image from 'next/image';
+import { useFormStatus } from 'react-dom';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../../../../../lib/supabaseClient';
 import type { ChangeEvent } from 'react';
@@ -88,7 +89,12 @@ const parseCoverage = (coverage: unknown): ServiceFormState['coverage_type'] => 
   return 'region';
 };
 
-export default function EditServicePage({ params }: { params: { id: string } }) {
+export default function EditServicePage({
+  params: paramsPromise,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const params = use(paramsPromise);
   const [session, setSession] = useState<Session | null>(null);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [formState, setFormState] = useState<ServiceFormState>({
@@ -111,7 +117,7 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
     address: '',
   });
 
-  const [saveState, formAction] = useFormState(updateServiceProfile, {
+  const [saveState, formAction] = useActionState(updateServiceProfile, {
     ok: false,
     message: '',
   });
@@ -129,7 +135,7 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
     end_time: '20:00',
   });
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
-  const [availabilityState, availabilityAction] = useFormState(saveAvailability, {
+  const [availabilityState, availabilityAction] = useActionState(saveAvailability, {
     ok: false,
     message: '',
   });
@@ -166,31 +172,6 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
     return Number(hours) * 60 + Number(minutes);
   };
 
-  const fetchAvailability = useCallback(async () => {
-    if (!params.id) {
-      setAvailabilitySlots([]);
-      return;
-    }
-    setAvailabilityLoading(true);
-    try {
-      const response = await fetch(`/api/availability?serviceId=${params.id}`);
-      if (!response.ok) {
-        setAvailabilitySlots([]);
-        return;
-      }
-      const payload = (await response.json()) as AvailabilitySlot[];
-      if (!Array.isArray(payload)) {
-        setAvailabilitySlots([]);
-        return;
-      }
-      setAvailabilitySlots(sortAvailabilitySlots(payload));
-    } catch {
-      setAvailabilitySlots([]);
-    } finally {
-      setAvailabilityLoading(false);
-    }
-  }, [params.id]);
-
   const handleAddSlot = () => {
     if (!slotDraft.start_time || !slotDraft.end_time) return;
     const start = toSlotTime(slotDraft.start_time);
@@ -217,13 +198,30 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
   };
 
   useEffect(() => {
-    fetchAvailability();
-  }, [fetchAvailability]);
-
-  useEffect(() => {
-    if (!availabilityState.ok) return;
-    fetchAvailability();
-  }, [availabilityState.ok, fetchAvailability]);
+    let isMounted = true;
+    const loadAvailability = async () => {
+      setAvailabilityLoading(true);
+      try {
+        const response = await fetch(`/api/availability?serviceId=${params.id}`);
+        if (!response.ok) {
+          if (isMounted) setAvailabilitySlots([]);
+          return;
+        }
+        const payload = (await response.json()) as AvailabilitySlot[];
+        if (isMounted) {
+          setAvailabilitySlots(Array.isArray(payload) ? sortAvailabilitySlots(payload) : []);
+        }
+      } catch {
+        if (isMounted) setAvailabilitySlots([]);
+      } finally {
+        if (isMounted) setAvailabilityLoading(false);
+      }
+    };
+    loadAvailability();
+    return () => {
+      isMounted = false;
+    };
+  }, [params.id, availabilityState.ok]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -719,9 +717,12 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
             <div className="space-y-3">
               <p className={label}>Coverbilde (1200×630 px anbefalt)</p>
               {coverPreview && (
-                <img
+                <Image
                   src={coverPreview}
                   alt="Cover"
+                  width={1200}
+                  height={630}
+                  unoptimized
                   className="w-full h-32 object-cover rounded-lg border border-slate-200"
                 />
               )}
@@ -745,9 +746,12 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
             <div className="space-y-3">
               <p className={label}>Logo (kvadratisk, maks 5 MB)</p>
               {logoPreview && (
-                <img
+                <Image
                   src={logoPreview}
                   alt="Logo"
+                  width={160}
+                  height={160}
+                  unoptimized
                   className="w-20 h-20 object-cover rounded-full border border-slate-200"
                 />
               )}
@@ -879,5 +883,3 @@ export default function EditServicePage({ params }: { params: { id: string } }) 
     </main>
   );
 }
-
-

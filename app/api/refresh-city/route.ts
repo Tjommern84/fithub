@@ -13,17 +13,24 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { timingSafeEqual } from 'crypto';
 import { getClientIp, isRateLimited } from '../../../lib/rateLimit';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-                  ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-                  ?? '';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const SERPER_API_KEY = process.env.SERPER_API_KEY ?? '';
+const REFRESH_SECRET = process.env.CITY_REFRESH_SECRET ?? '';
 
 const COOLDOWN_HOURS = 24;
+
+function hasValidRefreshSecret(req: NextRequest): boolean {
+  const supplied = req.headers.get('x-refresh-secret') ?? '';
+  if (!REFRESH_SECRET || supplied.length !== REFRESH_SECRET.length) return false;
+  const encoder = new TextEncoder();
+  return timingSafeEqual(encoder.encode(supplied), encoder.encode(REFRESH_SECRET));
+}
 
 // ── Search queries to run per city ────────────────────────────────────────────
 
@@ -115,19 +122,29 @@ function extractCity(address: string): string | null {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  if (!REFRESH_SECRET) {
+    return NextResponse.json({ status: 'error', reason: 'not configured' }, { status: 503 });
+  }
+  if (!hasValidRefreshSecret(req)) {
+    return NextResponse.json({ status: 'error', reason: 'unauthorized' }, { status: 401 });
+  }
+
   const ip = getClientIp(req);
   if (isRateLimited(`refresh-city:${ip}`, 5, 60_000)) {
     return NextResponse.json({ status: 'error', reason: 'rate limited' }, { status: 429 });
   }
 
-  if (!SUPABASE_URL || !SERPER_API_KEY) {
+  if (!SUPABASE_URL || !SUPABASE_KEY || !SERPER_API_KEY) {
     return NextResponse.json({ status: 'error', reason: 'not configured' }, { status: 500 });
   }
 
   let city: string;
   try {
     const body = await req.json() as { city?: unknown };
-    if (typeof body.city !== 'string' || !body.city.trim()) {
+    if (
+      typeof body.city !== 'string' ||
+      !/^[a-zæøå -]{2,60}$/i.test(body.city.trim())
+    ) {
       return NextResponse.json({ status: 'error', reason: 'city required' }, { status: 400 });
     }
     city = body.city.trim().toLowerCase();

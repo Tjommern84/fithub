@@ -141,9 +141,9 @@ export const CATEGORIES: CategoryConfig[] = [
     },
     accent: 'from-rose-300/60 via-pink-300/40 to-fuchsia-300/30',
     images: [
-      '/bilder/Klinisk & Rehab/pexels-kampus-6111589.webp',
-      '/bilder/Livsstil & Helse/pexels-karola-g-5714341.webp',
-      '/bilder/Klinisk & Rehab/pexels-karola-g-4506214.webp',
+      '/bilder/Klinisk%20%26%20Rehab/pexels-kampus-6111589.webp',
+      '/bilder/Livsstil%20%26%20Helse/pexels-karola-g-5714341.webp',
+      '/bilder/Klinisk%20%26%20Rehab/pexels-karola-g-4506214.webp',
     ],
     serviceTypes: ['rehab', 'ernæring', 'helse', 'spesialisert'],
   },

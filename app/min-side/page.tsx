@@ -1,7 +1,7 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState, useEffect, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 import type { ChangeEvent, FormEvent } from 'react';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
@@ -104,7 +104,7 @@ export default function MinSidePage() {
   const [orgName, setOrgName] = useState<string>('');
   const [customerBookings, setCustomerBookings] = useState<BookingItem[]>([]);
   const [bookingsStatus, setBookingsStatus] = useState<'idle' | 'loading' | 'error'>('idle');
-  const [cancelBookingState, cancelBookingAction] = useFormState(cancelBooking, {
+  const [cancelBookingState, cancelBookingAction] = useActionState(cancelBooking, {
     ok: false,
     message: '',
   });
@@ -194,11 +194,7 @@ export default function MinSidePage() {
   }, [session?.access_token, cancelBookingState.ok]);
 
   useEffect(() => {
-    if (!session?.access_token) {
-      setRecommendations([]);
-      setRecommendationStatus('idle');
-      return;
-    }
+    if (!session?.access_token) return;
     let isMounted = true;
     const controller = new AbortController();
     const fetchRecommendations = async () => {
@@ -236,17 +232,19 @@ export default function MinSidePage() {
   useEffect(() => {
     if (!session?.access_token) return;
     let isMounted = true;
-    setPrefStatus('loading');
-    getNotificationPreferences(session.access_token)
-      .then((data) => {
+    const loadPreferences = async () => {
+      setPrefStatus('loading');
+      try {
+        const data = await getNotificationPreferences(session.access_token);
         if (!isMounted) return;
         setPreferences(data);
         setPrefStatus('idle');
-      })
-      .catch(() => {
+      } catch {
         if (!isMounted) return;
         setPrefStatus('error');
-      });
+      }
+    };
+    loadPreferences();
     return () => {
       isMounted = false;
     };
@@ -1030,4 +1028,3 @@ export default function MinSidePage() {
     </main>
   );
 }
-

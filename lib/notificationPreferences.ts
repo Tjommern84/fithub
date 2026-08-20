@@ -1,6 +1,7 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from './serviceSupabase';
+import { getUserSupabase } from './userSupabase';
 
 export type NotificationPreferences = {
   email_lead_created: boolean;
@@ -14,33 +15,6 @@ export type EmailEventType =
   | 'provider_replied'
   | 'booking_confirmed'
   | 'booking_cancelled';
-
-const getSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-};
-
-const getServiceSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-};
 
 const ensurePreferenceRow = async (
   supabase: any,
@@ -79,7 +53,7 @@ const ensurePreferenceRow = async (
 export async function getNotificationPreferences(
   accessToken: string
 ): Promise<NotificationPreferences | null> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !accessToken) return null;
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -92,7 +66,7 @@ export async function updateNotificationPreferences(
   accessToken: string,
   updates: Partial<NotificationPreferences>
 ): Promise<{ ok: boolean; message: string; preferences?: NotificationPreferences }> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase) {
     return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }

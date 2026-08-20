@@ -1,4 +1,5 @@
 import { logError } from './errorLogger';
+import { getAuthenticatedSupabase } from './userSupabase';
 
 const getAccessTokenFromArgs = (args: unknown[]): string | null => {
   for (const arg of args) {
@@ -12,16 +13,8 @@ const getAccessTokenFromArgs = (args: unknown[]): string | null => {
 
 const getUserIdFromToken = async (accessToken?: string): Promise<string | null> => {
   if (!accessToken) return null;
-  // Dynamic import to avoid 'use server' context issues
-  const { createClient } = await import('@supabase/supabase-js');
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  const { data, error } = await supabase.auth.getUser(accessToken);
-  if (error || !data.user) return null;
-  return data.user.id;
+  const authenticated = await getAuthenticatedSupabase(accessToken);
+  return authenticated?.user.id ?? null;
 };
 
 export function wrapServerAction<

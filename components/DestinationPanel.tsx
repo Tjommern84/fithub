@@ -44,22 +44,16 @@ export default function DestinationPanel({
   onClose,
 }: Props) {
   const [cyclingRoute, setCyclingRoute] = useState<WalkingRoute | null>(null);
-  const [cyclingLoading, setCyclingLoading] = useState(false);
+  const [cyclingLoading, setCyclingLoading] = useState(true);
   const [transitStops, setTransitStops] = useState<TransitStop[]>([]);
-  const [transitLoading, setTransitLoading] = useState(false);
-  const [parkingLoading, setParkingLoading] = useState(false);
+  const [transitLoading, setTransitLoading] = useState(true);
+  const [parkingLoading, setParkingLoading] = useState(true);
   const [nearestParking, setNearestParking] = useState<Destination | null>(null);
   const [parkingRoute, setParkingRoute] = useState<WalkingRoute | null>(null);
 
   // Hent sykkelrute og kollektiv parallelt når panel åpnes
   useEffect(() => {
-    setCyclingRoute(null);
-    setTransitStops([]);
-    setNearestParking(null);
-    setParkingRoute(null);
-
     // Sykkel
-    setCyclingLoading(true);
     fetch(`/api/route?dest_id=${destination.id}&user_lat=${userLat}&user_lon=${userLon}&profile=cycling-regular`)
       .then(r => r.ok ? r.json() : null)
       .then((d: WalkingRoute | null) => setCyclingRoute(d))
@@ -67,7 +61,6 @@ export default function DestinationPanel({
       .finally(() => setCyclingLoading(false));
 
     // Kollektiv (Entur) — fra destinasjonen (avreise der)
-    setTransitLoading(true);
     fetch('/api/transit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -79,7 +72,6 @@ export default function DestinationPanel({
       .finally(() => setTransitLoading(false));
 
     // Nærmeste parkering → gå derfra til destinasjon
-    setParkingLoading(true);
     const bbox = 0.02; // ~2km
     fetch(`/api/destinations?minLon=${destination.lon - bbox}&minLat=${destination.lat - bbox}&maxLon=${destination.lon + bbox}&maxLat=${destination.lat + bbox}&types=parking`)
       .then(r => r.ok ? r.json() : [])

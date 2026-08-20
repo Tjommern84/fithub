@@ -48,8 +48,10 @@ type BulkResult = { line: string; ok: boolean; message: string; link?: string };
 export default function AdminPage() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [adminState, setAdminState] = useState<'unknown' | 'ok' | 'nope'>('unknown');
+  const [authChecked, setAuthChecked] = useState(!supabase);
+  const [adminState, setAdminState] = useState<'unknown' | 'ok' | 'nope'>(
+    ENABLE_ADMIN ? 'unknown' : 'nope',
+  );
   const [overview, setOverview] = useState<AdminOverviewState>({
     ok: false,
     services: [],
@@ -63,7 +65,7 @@ export default function AdminPage() {
   const [organizations, setOrganizations] = useState<AdminOrganizationOverview[]>([]);
   const [qualityRows, setQualityRows] = useState<ServiceQualityRow[]>([]);
   const [expandedErrorId, setExpandedErrorId] = useState<string | null>(null);
-  const [status, setStatus] = useState<AdminStatus>('loading');
+  const [status, setStatus] = useState<AdminStatus>(ENABLE_ADMIN ? 'loading' : 'error');
   const [busyServiceId, setBusyServiceId] = useState<string | null>(null);
   const [errorBusy, setErrorBusy] = useState<ErrorBusyState>({});
   const [inviteEmail, setInviteEmail] = useState('');
@@ -85,15 +87,8 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (!ENABLE_ADMIN) {
-      setAdminState('nope');
-      setStatus('error');
-      return;
-    }
-    if (!supabase) {
-      setAuthChecked(true);
-      return;
-    }
+    if (!ENABLE_ADMIN) return;
+    if (!supabase) return;
     let isMounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (isMounted) {

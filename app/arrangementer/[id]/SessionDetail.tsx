@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import type { Session as AuthSession } from '@supabase/supabase-js';
 import { supabase } from '../../../lib/supabaseClient';
 import { joinSession, leaveSession, getProfileVerification } from '../../../lib/groupSessions';
@@ -167,12 +168,12 @@ export default function SessionDetail({ session }: { session: GroupSession }) {
           <div className="mt-5">
             {!authSession ? (
               <p className="text-sm text-slate-500">
-                <a href="/min-side" className="text-violet-600 font-medium hover:underline">Logg inn</a>
+                <Link href="/min-side" className="text-violet-600 font-medium hover:underline">Logg inn</Link>
                 {' '}for å melde deg på.
               </p>
             ) : !isVerified ? (
               <p className="text-sm text-slate-500">
-                <a href="/min-side#telefon" className="text-violet-600 font-medium hover:underline">Verifiser telefon</a>
+                <Link href="/min-side#telefon" className="text-violet-600 font-medium hover:underline">Verifiser telefon</Link>
                 {' '}for å melde deg på.
               </p>
             ) : joined ? (

@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function MineArrangementerPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [sessions, setSessions] = useState<GroupSession[]>([]);
-  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('loading');
   const [cancelling, setCancelling] = useState<string | null>(null);
 
   useEffect(() => {
@@ -57,7 +57,6 @@ export default function MineArrangementerPage() {
   useEffect(() => {
     if (!session?.user?.id) return;
     let mounted = true;
-    setLoadStatus('loading');
     getMyGroupSessions(session.user.id)
       .then((data) => {
         if (!mounted) return;

@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Session } from '@supabase/supabase-js';
 import {
@@ -28,7 +28,12 @@ type LeadRow = {
   created_at: string;
 };
 
-export default function ServiceLeadsPage({ params }: { params: { serviceId: string } }) {
+export default function ServiceLeadsPage({
+  params: paramsPromise,
+}: {
+  params: Promise<{ serviceId: string }>;
+}) {
+  const params = use(paramsPromise);
   const [session, setSession] = useState<Session | null>(null);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');

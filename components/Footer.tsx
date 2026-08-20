@@ -81,11 +81,6 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/tilbydere" className="text-sm text-white/70 transition hover:text-white hover:underline">
-                  For tilbydere
-                </Link>
-              </li>
-              <li>
                 <Link href="/kontakt" className="text-sm text-white/70 transition hover:text-white hover:underline">
                   Kontakt oss
                 </Link>
@@ -137,7 +132,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+      {feedbackOpen && <FeedbackModal onClose={() => setFeedbackOpen(false)} />}
     </footer>
   );
 }

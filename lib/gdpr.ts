@@ -1,6 +1,7 @@
 ﻿'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { getServiceSupabase } from './serviceSupabase';
+import { getAuthenticatedSupabase } from './userSupabase';
 
 type UserProfile = {
   id: string;
@@ -60,43 +61,13 @@ export type ActionResult<T> = {
   data?: T;
 };
 
-const getSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-};
-
-const getServiceSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-};
-
 const getUserFromToken = async (accessToken: string) => {
-  const supabase = getSupabase();
-  if (!supabase || !accessToken) return null;
-
-  const { data, error } = await supabase.auth.getUser(accessToken);
-  if (error || !data.user) return null;
+  const authenticated = await getAuthenticatedSupabase(accessToken);
+  if (!authenticated) return null;
 
   return {
-    id: data.user.id,
-    email: data.user.email ?? null,
+    id: authenticated.user.id,
+    email: authenticated.user.email ?? null,
   };
 };
 

@@ -1,6 +1,6 @@
 ﻿'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendEmail, isEmailConfigured } from '../../../../lib/emailClient';
 import { providerRepliedEmail } from '../../../../lib/emailTemplates';
 import { shouldSendEmail } from '../../../../lib/notificationPreferences';
@@ -9,6 +9,7 @@ import { wrapServerAction } from '../../../../lib/actionWrapper';
 import { CancellationType } from '../../../../lib/booking';
 import { ENABLE_EMAILS, ENABLE_PAYMENTS } from '../../../../lib/featureFlags';
 import { isStripeConfigured } from '../../../../lib/stripe';
+import { getUserSupabase } from '../../../../lib/userSupabase';
 
 type LeadRow = {
   id: string;
@@ -43,17 +44,6 @@ type LeadBooking = {
   no_show_marked_at: string | null;
 } | null;
 
-const getSupabase = (): any => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-};
-
 const hasEmailEvent = async (
   supabase: any,
   leadId: string,
@@ -82,7 +72,7 @@ const logEmailEvent = async (
   });
 };
 
-const getProfileById = async (supabase: ReturnType<typeof createClient>, userId: string) => {
+const getProfileById = async (supabase: SupabaseClient<any>, userId: string) => {
   const { data } = await supabase
     .from('profiles')
     .select('id, full_name')
@@ -102,7 +92,7 @@ export async function getLeadWithMessages(
   booking: LeadBooking;
   role: 'provider' | 'user' | 'none';
 }> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !leadId || !accessToken) {
     return { lead: null, messages: [], suggestions: [], booking: null, role: 'none' };
   }
@@ -187,17 +177,17 @@ const sendProviderMessageHandler = async (
     return { ok: false, message: 'Betaling er ikke aktivert ennå.' };
   }
 
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const leadId = String(formData.get('leadId') ?? '');
   const message = String(formData.get('message') ?? '').trim();
 
   if (!accessToken) {
     return { ok: false, message: 'Du må være innlogget.' };
+  }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   if (!leadId || !message) {
@@ -282,4 +272,3 @@ const sendProviderMessageHandler = async (
 };
 
 export const sendProviderMessage = wrapServerAction('provider_message_send', sendProviderMessageHandler);
-

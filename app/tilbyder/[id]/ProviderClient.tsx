@@ -3,11 +3,10 @@
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useFormState } from 'react-dom';
 import type { Session } from '@supabase/supabase-js';
 import type { Goal, Service } from '../../../lib/domain';
 import { AvailabilitySlot, formatSlotLabel } from '../../../lib/booking';
@@ -142,10 +141,7 @@ export default function ProviderClient({ params, service: initialService, relate
   const backHref = queryString ? `/resultater?${queryString}` : '/resultater';
   const rawCity = searchParams.get('location') ?? searchParams.get('city') ?? '';
 
-  const [service, setService] = useState<Service | null>(initialService);
-  useEffect(() => {
-    setService(initialService);
-  }, [initialService]);
+  const service = initialService;
   const profileTrackedRef = useRef<string | null>(null);
   const cityKey = useMemo(
     () => (service ? getPreferredCityKey(service, rawCity) : ''),
@@ -169,10 +165,12 @@ export default function ProviderClient({ params, service: initialService, relate
   });
   const [session, setSession] = useState<Session | null>(null);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityLoading, setAvailabilityLoading] = useState(Boolean(initialService?.id));
   const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [reviewSummary, setReviewSummary] = useState({ avg: 0, count: 0 });
-  const [reviewStatus, setReviewStatus] = useState<'idle' | 'loading'>('idle');
+  const [reviewStatus, setReviewStatus] = useState<'idle' | 'loading'>(
+    initialService && ENABLE_REVIEWS ? 'loading' : 'idle',
+  );
   const [reviewEligibility, setReviewEligibility] = useState<{
     canReview: boolean;
     leadId?: string;
@@ -180,7 +178,7 @@ export default function ProviderClient({ params, service: initialService, relate
   const [missingConsents, setMissingConsents] = useState<ConsentType[]>([]);
   const [ownerUserId, setOwnerUserId] = useState<string | null>(null);
   const initialState: LeadActionState = { ok: false, message: '' };
-  const [state, formAction] = useFormState(createLead, initialState);
+  const [state, formAction] = useActionState(createLead, initialState);
   const [isRequestModalOpen, setRequestModalOpen] = useState(false);
   const lastTriggerRef = useRef<HTMLButtonElement | null>(null);
   const firstInputRef = useRef<HTMLInputElement | null>(null);
@@ -218,41 +216,39 @@ export default function ProviderClient({ params, service: initialService, relate
     return `Tilbyderen er ofte tilgjengelig: ${summary}`;
   }, [availability, availabilityLoading]);
   const reviewInitialState: ReviewActionState = { ok: false, message: '' };
-  const [reviewState, reviewAction] = useFormState(submitReview, reviewInitialState);
+  const [reviewState, reviewAction] = useActionState(submitReview, reviewInitialState);
+
+  const syncSession = useCallback((nextSession: Session | null) => {
+    setSession(nextSession);
+    if (!nextSession?.user) return;
+    const fullName =
+      typeof nextSession.user.user_metadata?.full_name === 'string'
+        ? nextSession.user.user_metadata.full_name
+        : '';
+    setFormState((prev) => ({
+      name: prev.name || fullName,
+      email: prev.email || nextSession.user.email || '',
+      message: prev.message,
+    }));
+  }, []);
 
   useEffect(() => {
     if (!supabase) return;
     let isMounted = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (isMounted) setSession(data.session);
+      if (isMounted) syncSession(data.session);
     });
     const { data } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
+      syncSession(newSession);
     });
     return () => {
       isMounted = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [syncSession]);
 
   useEffect(() => {
-    if (!session?.user) return;
-    const fullName =
-      typeof session.user.user_metadata?.full_name === 'string'
-        ? session.user.user_metadata.full_name
-        : '';
-    setFormState((prev) => ({
-      name: prev.name || fullName,
-      email: prev.email || session.user.email || '',
-      message: prev.message,
-    }));
-  }, [session]);
-
-  useEffect(() => {
-    if (!session?.access_token) {
-      setMissingConsents([]);
-      return;
-    }
+    if (!session?.access_token) return;
     let isMounted = true;
     getMissingConsents(session.access_token)
       .then((missing) => {
@@ -267,12 +263,6 @@ export default function ProviderClient({ params, service: initialService, relate
       isMounted = false;
     };
   }, [session?.access_token]);
-
-  useEffect(() => {
-    if (state.ok) {
-      setSuggestedTimes(['', '', '']);
-    }
-  }, [state.ok]);
 
   useEffect(() => {
     if (!isRequestModalOpen) return;
@@ -300,7 +290,6 @@ export default function ProviderClient({ params, service: initialService, relate
 
   useEffect(() => {
     if (!service || !ENABLE_REVIEWS) return;
-    setReviewStatus('loading');
     const loadReviews = async () => {
       const [reviewList, summary] = await Promise.all([
         getReviews(service.id),
@@ -323,14 +312,9 @@ export default function ProviderClient({ params, service: initialService, relate
   }, [service]);
 
   useEffect(() => {
-    if (!service?.id) {
-      setAvailability([]);
-      setAvailabilityLoading(false);
-      return;
-    }
+    if (!service?.id) return;
     let isMounted = true;
     const loadAvailability = async () => {
-      setAvailabilityLoading(true);
       try {
         const response = await fetch(`/api/availability?serviceId=${service.id}`);
         if (!response.ok) return;
@@ -353,10 +337,7 @@ export default function ProviderClient({ params, service: initialService, relate
   }, [service?.id]);
 
   useEffect(() => {
-    if (!service || !session?.access_token || !ENABLE_REVIEWS) {
-      setReviewEligibility({ canReview: false });
-      return;
-    }
+    if (!service || !session?.access_token || !ENABLE_REVIEWS) return;
     const checkEligibility = async () => {
       const eligibility = await canReview(service.id, session.access_token);
       setReviewEligibility(eligibility);
@@ -366,8 +347,6 @@ export default function ProviderClient({ params, service: initialService, relate
 
   useEffect(() => {
     if (!reviewState.ok || !service || !ENABLE_REVIEWS) return;
-    setReviewFormState({ rating: 5, comment: '' });
-    setReviewEligibility({ canReview: false });
     const refresh = async () => {
       const [reviewList, summary] = await Promise.all([
         getReviews(service.id),
@@ -1069,12 +1048,13 @@ export default function ProviderClient({ params, service: initialService, relate
         </div>
       )}
 
-      <ReportIssueModal
-        serviceId={service.id}
-        serviceName={service.name}
-        open={isReportModalOpen}
-        onClose={closeReportModal}
-      />
+      {isReportModalOpen && (
+        <ReportIssueModal
+          serviceId={service.id}
+          serviceName={service.name}
+          onClose={closeReportModal}
+        />
+      )}
     </main>
   );
 }

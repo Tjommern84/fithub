@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { use, useActionState, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../../../../lib/supabaseClient';
 import {
@@ -91,7 +91,13 @@ const formatSuggestionTime = (value: string) =>
 
 const NO_SHOW_GRACE_MS = 2 * 60 * 60 * 1000;
 
-export default function LeadDetailPage({ params }: { params: { id: string } }) {
+export default function LeadDetailPage({
+  params: paramsPromise,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const params = use(paramsPromise);
+  const [openedAt] = useState(() => Date.now());
   const [session, setSession] = useState<Session | null>(null);
   const [leadPayload, setLeadPayload] = useState<LeadPayload>({
     lead: null,
@@ -103,19 +109,19 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [messageInput, setMessageInput] = useState('');
 
-  const [sendState, sendAction] = useFormState(sendProviderMessage, {
+  const [sendState, sendAction] = useActionState(sendProviderMessage, {
     ok: false,
     message: '',
   });
-  const [bookingState, bookingAction] = useFormState(createBookingFromSuggestion, {
+  const [bookingState, bookingAction] = useActionState(createBookingFromSuggestion, {
     ok: false,
     message: '',
   });
-  const [cancelBookingState, cancelBookingAction] = useFormState(cancelBooking, {
+  const [cancelBookingState, cancelBookingAction] = useActionState(cancelBooking, {
     ok: false,
     message: '',
   });
-  const [noShowState, noShowAction] = useFormState(markBookingNoShow, {
+  const [noShowState, noShowAction] = useActionState(markBookingNoShow, {
     ok: false,
     message: '',
   });
@@ -164,8 +170,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     if (leadPayload.booking.status === 'cancelled') return false;
     if (leadPayload.booking.no_show_marked) return false;
     const scheduled = new Date(leadPayload.booking.scheduled_at).getTime();
-    return Date.now() > scheduled + NO_SHOW_GRACE_MS;
-  }, [leadPayload]);
+    return openedAt > scheduled + NO_SHOW_GRACE_MS;
+  }, [leadPayload, openedAt]);
 
   const formatNoShowTime = (value: string | null) => {
     if (!value) return '';

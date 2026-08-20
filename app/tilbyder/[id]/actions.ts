@@ -1,6 +1,5 @@
 ﻿'use server';
 
-import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { headers } from 'next/headers';
 import { sendEmail, isEmailConfigured } from '../../../lib/emailClient';
@@ -15,6 +14,7 @@ import { isStripeConfigured } from '../../../lib/stripe';
 import { getOrgSubscriptionStatusForUser, recordOrgLead } from '../../../lib/organizations';
 import { invalidateServiceCaches } from '../../../lib/cacheInvalidation';
 import { getServiceSupabase } from '../../../lib/serviceSupabase';
+import { getUserSupabase } from '../../../lib/userSupabase';
 import { isRateLimited } from '../../../lib/rateLimit';
 
 export type LeadActionState = {
@@ -48,16 +48,7 @@ type ClaimStatus = {
 
 type EmailEventType = 'lead_created' | 'provider_replied';
 
-const getSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-};
+const getSupabase = getUserSupabase;
 
 const hasEmailEvent = async (
   supabase: any,
@@ -148,11 +139,6 @@ export async function claimService(
   _prevState: ClaimStatus,
   formData: FormData
 ): Promise<ClaimStatus> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, status: 'unauthorized', message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const serviceId = String(formData.get('serviceId') ?? '');
 
@@ -162,6 +148,11 @@ export async function claimService(
 
   if (!serviceId) {
     return { ok: false, status: 'not_found', message: 'Ugyldig tjeneste.' };
+  }
+
+  const supabase = getSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, status: 'unauthorized', message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -209,11 +200,6 @@ const createLeadHandler = async (
   _prevState: LeadActionState,
   formData: FormData
 ): Promise<LeadActionState> => {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   if (!ENABLE_PAYMENTS || !isStripeConfigured) {
     return { ok: false, message: 'Betaling er ikke aktivert ennå. Prøv igjen senere.' };
   }
@@ -235,6 +221,11 @@ const createLeadHandler = async (
 
   if (message.length < 20) {
     return { ok: false, message: 'Meldingen må være minst 20 tegn.' };
+  }
+
+  const supabase = getSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   const { data, error } = await supabase.auth.getUser(accessToken);
@@ -386,17 +377,17 @@ const addLeadTimeSuggestionsHandler = async (
   _prevState: { ok: boolean; message: string },
   formData: FormData
 ): Promise<{ ok: boolean; message: string }> => {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const leadId = String(formData.get('leadId') ?? '');
   const suggestionDates = normalizeSuggestionTimes(formData.getAll('suggestions[]'));
 
   if (!accessToken || !leadId) {
     return { ok: false, message: 'Manglende data for foreslåtte tider.' };
+  }
+
+  const supabase = getSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   if (suggestionDates.length === 0) {
@@ -462,7 +453,7 @@ export async function canReview(
   accessToken: string
 ): Promise<{ canReview: boolean; leadId?: string }> {
   if (!ENABLE_REVIEWS) return { canReview: false };
-  const supabase = getSupabase();
+  const supabase = getSupabase(accessToken);
   if (!supabase || !serviceId || !accessToken) return { canReview: false };
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -497,11 +488,6 @@ const submitReviewHandler = async (
     return { ok: false, message: 'Vurderinger er ikke aktivert ennå.' };
   }
 
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const leadId = String(formData.get('lead_id') ?? '');
   const ratingValue = Number(formData.get('rating') ?? 0);
@@ -517,6 +503,11 @@ const submitReviewHandler = async (
 
   if (comment.length < 10) {
     return { ok: false, message: 'Kommentaren må være minst 10 tegn.' };
+  }
+
+  const supabase = getSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   if (ratingValue < 1 || ratingValue > 5) {
@@ -602,11 +593,6 @@ export async function claimServiceWithOrgnr(
   _prevState: ClaimWithOrgnrStatus,
   formData: FormData
 ): Promise<ClaimWithOrgnrStatus> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, status: 'unauthorized', message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const serviceId = String(formData.get('serviceId') ?? '');
   const orgnrInput = String(formData.get('orgnr') ?? '').replace(/\s|-/g, '');
@@ -619,6 +605,11 @@ export async function claimServiceWithOrgnr(
   }
   if (!/^\d{9}$/.test(orgnrInput)) {
     return { ok: false, status: 'orgnr_mismatch', message: 'Org.nr. må være 9 siffer.' };
+  }
+
+  const supabase = getSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, status: 'unauthorized', message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);

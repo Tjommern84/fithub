@@ -24,7 +24,7 @@ const RECURRENCE_OPTIONS: { value: RecurrenceType | ''; label: string }[] = [
 export default function CreateSessionForm() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(Boolean(supabase));
   const [isVerified, setIsVerified] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -46,7 +46,7 @@ export default function CreateSessionForm() {
   const [paymentInfo, setPaymentInfo] = useState('');
 
   useEffect(() => {
-    if (!supabase) { setAuthLoading(false); return; }
+    if (!supabase) return;
     supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
       if (data.session?.user?.id) {

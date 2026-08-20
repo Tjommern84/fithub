@@ -38,6 +38,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   // Leser localStorage direkte/synkront her — dette ER foreldre-effekten, så det er
   // ikke noe child-vs-parent useEffect-race å beskytte mot lenger (se historisk notat
   // i SearchLocationBar.tsx før denne logikken ble flyttet hit).
+  /* eslint-disable react-hooks/set-state-in-effect -- Browser-only localStorage hydration must run after SSR. */
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LOCATION_STORAGE_KEY);
@@ -64,6 +65,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
       setGeoPromptVisible(true);
     }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const setLocation = useCallback((v: LocationState | null) => {
     setLocationState(v);

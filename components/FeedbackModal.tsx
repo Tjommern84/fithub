@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useFormState } from 'react-dom';
+import { useActionState, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import { submitFeedback } from '../app/feedback/actions';
@@ -12,15 +11,14 @@ import { Card } from './ui/Card';
 import { label } from '../lib/ui';
 
 type FeedbackModalProps = {
-  open: boolean;
   onClose: () => void;
 };
 
-export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
+export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   const pathname = usePathname();
   const [session, setSession] = useState<Session | null>(null);
   const [message, setMessage] = useState('');
-  const [state, action] = useFormState(submitFeedback, { ok: false, message: '' });
+  const [state, action] = useActionState(submitFeedback, { ok: false, message: '' });
 
   useEffect(() => {
     if (!supabase) return;
@@ -36,13 +34,6 @@ export default function FeedbackModal({ open, onClose }: FeedbackModalProps) {
       data.subscription.unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (!state.ok) return;
-    setMessage('');
-  }, [state.ok]);
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-modal flex items-end justify-center bg-slate-900/40 p-4 sm:items-center">

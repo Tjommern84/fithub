@@ -1,18 +1,20 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabaseClient';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { Input } from '../../../components/ui/Input';
 import { container, label } from '../../../lib/ui';
+import { getSafeAdminPath } from '../../../lib/safeRedirect';
 
 type LoginStatus = 'idle' | 'sending' | 'sent' | 'error';
 
 function AdminLoginContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get('next') || '/admin';
+  const next = getSafeAdminPath(searchParams.get('next'));
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<LoginStatus>('idle');
   const [message, setMessage] = useState('');
@@ -21,10 +23,10 @@ function AdminLoginContent() {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
-        window.location.href = `/admin/verify?next=${encodeURIComponent(next)}`;
+        router.replace(`/admin/verify?next=${encodeURIComponent(next)}`);
       }
     });
-  }, [next]);
+  }, [next, router]);
 
   return (
     <main className={`${container} py-16`}>

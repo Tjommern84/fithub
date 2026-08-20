@@ -28,12 +28,8 @@ export default function ConsentGate() {
   }, []);
 
   useEffect(() => {
-    if (!session?.access_token) {
-      setMissingConsents([]);
-      return;
-    }
+    if (!session?.access_token) return;
     let isMounted = true;
-    setStatus('loading');
     getMissingConsents(session.access_token)
       .then((missing) => {
         if (!isMounted) return;

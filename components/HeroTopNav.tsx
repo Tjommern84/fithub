@@ -18,12 +18,6 @@ export default function HeroTopNav() {
         <ExploreActivitiesLink className="text-sm font-medium text-white transition hover:text-white/80">
           Utforsk aktiviteter
         </ExploreActivitiesLink>
-        <Link href="/tilbydere" className="text-sm font-medium text-white transition hover:text-white/80">
-          Tilbydere
-        </Link>
-        <Link href="/magasin" className="text-sm font-medium text-white transition hover:text-white/80">
-          Magasin
-        </Link>
         <Link href="/om-oss" className="text-sm font-medium text-white transition hover:text-white/80">
           Om oss
         </Link>

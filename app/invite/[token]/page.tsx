@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../../../lib/supabaseClient';
@@ -18,7 +18,12 @@ type InviteInfo = {
   accepted_at: string | null;
 };
 
-export default function InvitePage({ params }: { params: { token: string } }) {
+export default function InvitePage({
+  params: paramsPromise,
+}: {
+  params: Promise<{ token: string }>;
+}) {
+  const params = use(paramsPromise);
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   const [invite, setInvite] = useState<InviteInfo | null>(null);
@@ -45,7 +50,6 @@ export default function InvitePage({ params }: { params: { token: string } }) {
 
   useEffect(() => {
     let isMounted = true;
-    setStatus('loading');
     getInviteByToken(params.token)
       .then((result) => {
         if (!isMounted) return;

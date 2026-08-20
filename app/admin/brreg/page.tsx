@@ -8,10 +8,11 @@ import { container } from '../../../lib/ui';
 import { ENABLE_ADMIN } from '../../../lib/featureFlags';
 
 export default async function BrregAdminPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: { category?: string; verified?: string; page?: string };
+  searchParams: Promise<{ category?: string; verified?: string; page?: string }>;
 }) {
+  const searchParams = await searchParamsPromise;
   // Auth check
   if (!ENABLE_ADMIN) {
     redirect('/');
@@ -162,15 +163,12 @@ export default async function BrregAdminPage({
       )}
 
       {/* Filters */}
-      <div className="mt-8 flex gap-4">
+      <form action="/admin/brreg" method="get" className="mt-8 flex flex-wrap gap-4">
         <select
+          name="category"
+          aria-label="Kategori"
           className="rounded-lg border border-slate-300 px-3 py-2"
           defaultValue={searchParams.category || 'all'}
-          onChange={(e) => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('category', e.target.value);
-            window.location.href = url.toString();
-          }}
         >
           <option value="all">All Categories</option>
           {Object.keys(categoryStats).map((cat) => (
@@ -181,19 +179,22 @@ export default async function BrregAdminPage({
         </select>
 
         <select
+          name="verified"
+          aria-label="Verifiseringsstatus"
           className="rounded-lg border border-slate-300 px-3 py-2"
           defaultValue={searchParams.verified || 'all'}
-          onChange={(e) => {
-            const url = new URL(window.location.href);
-            url.searchParams.set('verified', e.target.value);
-            window.location.href = url.toString();
-          }}
         >
           <option value="all">All</option>
           <option value="true">Verified</option>
           <option value="false">Not Verified</option>
         </select>
-      </div>
+        <button
+          type="submit"
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+        >
+          Filtrer
+        </button>
+      </form>
 
       {/* Entity list */}
       <div className="mt-8">

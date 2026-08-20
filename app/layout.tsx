@@ -59,11 +59,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
           <ConsentGate />
         </LocationProvider>
-        <Script
-          data-goatcounter="https://tjommern.goatcounter.com/count"
-          src="//gc.zgo.at/count.js"
-          strategy="afterInteractive"
-        />
+        {process.env.NODE_ENV === 'production' && (
+          <Script
+            data-goatcounter="https://tjommern.goatcounter.com/count"
+            src="https://gc.zgo.at/count.js"
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );

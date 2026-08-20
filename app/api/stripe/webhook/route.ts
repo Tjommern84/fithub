@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   const rawBody = await request.text();
-  const signature = headers().get('stripe-signature');
+  const signature = (await headers()).get('stripe-signature');
   if (!signature) {
     return new Response('Missing signature', { status: 400 });
   }
@@ -119,4 +119,3 @@ export async function POST(request: Request) {
 
   return new Response('ok', { status: 200 });
 }
-

@@ -1,6 +1,7 @@
 'use client';
 
-import { useFormState, useFormStatus } from 'react-dom';
+import { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { submitContactForm, type ContactState } from './actions';
 
 const SUBJECTS = ['Spørsmål', 'Tilbakemelding', 'Bli listeoppført', 'Annet'];
@@ -19,7 +20,7 @@ function SubmitButton() {
 }
 
 export default function ContactForm() {
-  const [state, action] = useFormState<ContactState, FormData>(submitContactForm, null);
+  const [state, action] = useActionState<ContactState, FormData>(submitContactForm, null);
 
   if (state?.ok) {
     return (

@@ -25,10 +25,11 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({
-  params,
+  params: paramsPromise,
 }: {
-  params: { city: string };
+  params: Promise<{ city: string }>;
 }): Promise<Metadata> {
+  const params = await paramsPromise;
   const coords = cityCoordinates[params.city];
   if (!coords) return { title: 'FitHub' };
   const displayCity = capitalizeCity(params.city);
@@ -45,10 +46,11 @@ export async function generateMetadata({
 }
 
 export default async function TufteparkCityPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { city: string };
+  params: Promise<{ city: string }>;
 }) {
+  const params = await paramsPromise;
   const coords = cityCoordinates[params.city];
   if (!coords) notFound();
 

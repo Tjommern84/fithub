@@ -24,19 +24,27 @@ const DESTINATION_LABELS: Record<DestinationType, string> = {
 
 export default function HomeDestinations() {
   const { location } = useLocation();
-  const [destinations, setDestinations] = useState<DestinationWithDistance[] | null>(null);
-  const [hasError, setHasError] = useState(false);
+  const locationKey = location ? `${location.lat}:${location.lon}` : '';
+  const [result, setResult] = useState<{
+    locationKey: string;
+    destinations: DestinationWithDistance[];
+    hasError: boolean;
+  }>({ locationKey: '', destinations: [], hasError: false });
+  const destinations = result.locationKey === locationKey ? result.destinations : null;
+  const hasError = result.locationKey === locationKey && result.hasError;
 
   useEffect(() => {
-    if (!location) { setDestinations(null); return; }
+    if (!location) return;
     let cancelled = false;
-    setHasError(false);
-    setDestinations(null);
     getNearestDestinations(location.lat, location.lon, 30, undefined, 8)
-      .then((d) => { if (!cancelled) setDestinations(d); })
-      .catch(() => { if (!cancelled) setHasError(true); });
+      .then((destinations) => {
+        if (!cancelled) setResult({ locationKey, destinations, hasError: false });
+      })
+      .catch(() => {
+        if (!cancelled) setResult({ locationKey, destinations: [], hasError: true });
+      });
     return () => { cancelled = true; };
-  }, [location]);
+  }, [location, locationKey]);
 
   if (!location || hasError) return null;
 

@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useFormState } from 'react-dom';
+import { useActionState, useState } from 'react';
 import { reportService, type ReportServiceResult } from '../app/tilbyder/[id]/actions';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Input';
@@ -11,7 +10,6 @@ import { label } from '../lib/ui';
 type ReportIssueModalProps = {
   serviceId: string;
   serviceName: string;
-  open: boolean;
   onClose: () => void;
 };
 
@@ -31,21 +29,11 @@ const reportServiceAction = async (
 export default function ReportIssueModal({
   serviceId,
   serviceName,
-  open,
   onClose,
 }: ReportIssueModalProps) {
   const [selectedReason, setSelectedReason] = useState('');
   const [details, setDetails] = useState('');
-  const [state, action] = useFormState(reportServiceAction, { ok: false, message: '' });
-
-  useEffect(() => {
-    if (!open) {
-      setSelectedReason('');
-      setDetails('');
-    }
-  }, [open]);
-
-  if (!open) return null;
+  const [state, action] = useActionState(reportServiceAction, { ok: false, message: '' });
 
   const combinedReason = [selectedReason, details.trim()].filter(Boolean).join(' — ');
 

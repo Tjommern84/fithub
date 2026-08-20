@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -202,12 +202,13 @@ function ResultCard({
         </div>
       </div>
 
-      <ReportIssueModal
-        serviceId={service.id}
-        serviceName={service.name}
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-      />
+      {reportOpen && (
+        <ReportIssueModal
+          serviceId={service.id}
+          serviceName={service.name}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
 
       <script
         type="application/ld+json"
@@ -308,8 +309,13 @@ function UnanchoredCard({
           )}
         </div>
       </div>
-      <ReportIssueModal serviceId={item.id} serviceName={item.name}
-        open={reportOpen} onClose={() => setReportOpen(false)} />
+      {reportOpen && (
+        <ReportIssueModal
+          serviceId={item.id}
+          serviceName={item.name}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -466,17 +472,6 @@ export default function ResultsView({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { location, setLocation } = useLocation();
-
-  // Background city refresh (best-effort)
-  useEffect(() => {
-    const city = locationLabel?.split(',')[0].trim().toLowerCase();
-    if (!city) return;
-    fetch('/api/refresh-city', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ city }),
-    }).catch(() => {});
-  }, [locationLabel]);
 
   const cat = searchParams.get('cat');
   const activeTags = (searchParams.get('tags') ?? '').split(',').filter(Boolean);

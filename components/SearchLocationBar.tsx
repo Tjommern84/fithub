@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, type FormEvent } from 'react';
+import { useEffect, useRef, useState, useCallback, useSyncExternalStore, type FormEvent } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   useLocation,
@@ -24,6 +24,24 @@ const RADIUS_OPTIONS: { value: RadiusKm; label: string }[] = [
 ];
 
 const SMART_SEARCH_KEY = 'sdem_smart_search_v1';
+const SMART_SEARCH_EVENT = 'sdem-smart-search-change';
+
+function subscribeSmartSearch(onStoreChange: () => void): () => void {
+  window.addEventListener('storage', onStoreChange);
+  window.addEventListener(SMART_SEARCH_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener('storage', onStoreChange);
+    window.removeEventListener(SMART_SEARCH_EVENT, onStoreChange);
+  };
+}
+
+function getSmartSearchSnapshot(): boolean {
+  return localStorage.getItem(SMART_SEARCH_KEY) === '1';
+}
+
+function getServerSmartSearchSnapshot(): boolean {
+  return false;
+}
 
 function firstPart(label: string): string {
   return label.split(',')[0]?.trim() || label;
@@ -35,10 +53,17 @@ export default function SearchLocationBar() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
-  const [smartSearch, setSmartSearch] = useState(false);
+  const smartSearch = useSyncExternalStore(
+    subscribeSmartSearch,
+    getSmartSearchSnapshot,
+    getServerSmartSearchSnapshot,
+  );
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [suggestionResult, setSuggestionResult] = useState<{
+    query: string;
+    items: Suggestion[];
+  }>({ query: '', items: [] });
+  const [loadingSuggestionQuery, setLoadingSuggestionQuery] = useState<string | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -49,18 +74,10 @@ export default function SearchLocationBar() {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const radiusRef = useRef<HTMLDivElement | null>(null);
 
-  // Smart-søk-toggle: lest fra localStorage etter mount (unngår SSR/client-mismatch)
-  useEffect(() => {
-    if (localStorage.getItem(SMART_SEARCH_KEY) === '1') setSmartSearch(true);
-  }, []);
-
   const toggleSmartSearch = useCallback(() => {
-    setSmartSearch((prev) => {
-      const next = !prev;
-      localStorage.setItem(SMART_SEARCH_KEY, next ? '1' : '0');
-      return next;
-    });
-  }, []);
+    localStorage.setItem(SMART_SEARCH_KEY, smartSearch ? '0' : '1');
+    window.dispatchEvent(new Event(SMART_SEARCH_EVENT));
+  }, [smartSearch]);
 
   // Sync compact/edit mode when context location loads (e.g. from localStorage restore)
   const locationWasNull = useRef(true);
@@ -87,23 +104,34 @@ export default function SearchLocationBar() {
   }, [radiusOpen]);
 
   // Debounced suggestions — kun i adressemodus (smartSearch av)
+  const trimmedQuery = query.trim();
+  const canSuggest = !smartSearch
+    && Boolean(trimmedQuery)
+    && (!location || trimmedQuery !== location.label);
+  const suggestions = canSuggest && suggestionResult.query === trimmedQuery
+    ? suggestionResult.items
+    : [];
+  const loadingSuggestions = canSuggest && loadingSuggestionQuery === trimmedQuery;
+
   useEffect(() => {
-    if (smartSearch) { setSuggestions([]); return; }
+    if (!canSuggest) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    const trimmed = query.trim();
-    if (!trimmed || (location && trimmed === location.label)) {
-      setSuggestions([]);
-      return;
-    }
     debounceRef.current = setTimeout(async () => {
-      setLoadingSuggestions(true);
+      setLoadingSuggestionQuery(trimmedQuery);
       try {
-        const res = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`);
-        if (res.ok) setSuggestions((await res.json()) as Suggestion[]);
-      } catch { /* noop */ } finally { setLoadingSuggestions(false); }
+        const res = await fetch(`/api/geocode?q=${encodeURIComponent(trimmedQuery)}`);
+        if (res.ok) {
+          setSuggestionResult({
+            query: trimmedQuery,
+            items: (await res.json()) as Suggestion[],
+          });
+        }
+      } catch { /* noop */ } finally {
+        setLoadingSuggestionQuery((current) => current === trimmedQuery ? null : current);
+      }
     }, 250);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, location, smartSearch]);
+  }, [canSuggest, trimmedQuery]);
 
   const persist = useCallback((next: LocationState | null) => {
     setLocation(next);
@@ -119,7 +147,7 @@ export default function SearchLocationBar() {
     };
     persist(next);
     setQuery(next.label);
-    setSuggestions([]);
+    setSuggestionResult({ query: '', items: [] });
     setShowSuggestions(false);
     setGeoError(null);
   };

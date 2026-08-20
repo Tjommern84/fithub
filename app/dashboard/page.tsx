@@ -1,8 +1,8 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useFormState, useFormStatus } from 'react-dom';
+import { useFormStatus } from 'react-dom';
 import type { Session } from '@supabase/supabase-js';
 import { isSupabaseConfigured, supabase } from '../../lib/supabaseClient';
 import { createCheckoutSession, getLeadsForOwnedService, getOwnedServices } from './actions';
@@ -279,7 +279,7 @@ export default function DashboardPage() {
 
       {status === 'idle' && ownedServices.length === 0 && (
         <Card className="mt-6 text-sm text-slate-600">
-          Du eier ingen tjenester ennå. Finn en tjeneste og trykk "Claim" for å komme i gang.
+          Du eier ingen tjenester ennå. Finn en tjeneste og trykk &quot;Claim&quot; for å komme i gang.
         </Card>
       )}
     </main>
@@ -293,7 +293,7 @@ function SubscribeButton({
   serviceId: string;
   accessToken: string;
 }) {
-  const [state, action] = useFormState(createCheckoutSession, {
+  const [state, action] = useActionState(createCheckoutSession, {
     ok: false,
     message: '',
     url: undefined,

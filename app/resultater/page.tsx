@@ -34,10 +34,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export async function generateMetadata({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<Metadata> {
+  const searchParams = await searchParamsPromise;
   const rawCat = typeof searchParams.cat === 'string' ? searchParams.cat : '';
   const rawType = typeof searchParams.type === 'string' ? searchParams.type : '';
   const rawLocation = typeof searchParams.location === 'string' ? searchParams.location : '';
@@ -58,10 +59,11 @@ export async function generateMetadata({
 }
 
 export default async function ResultsPage({
-  searchParams,
+  searchParams: searchParamsPromise,
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = await searchParamsPromise;
   // ── Parse params ──────────────────────────────────────────────────────────
 
   const rawCat      = typeof searchParams.cat      === 'string' ? searchParams.cat      : '';

@@ -124,10 +124,11 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({
-  params,
+  params: paramsPromise,
 }: {
-  params: { by: string; goal: string };
+  params: Promise<{ by: string; goal: string }>;
 }): Promise<Metadata> {
+  const params = await paramsPromise;
   const cityKey = normalizeCity(params.by);
   const goalData = getGoalDataFromSlug(params.goal);
 
@@ -167,10 +168,11 @@ export async function generateMetadata({
 }
 
 export default async function TrainingLandingPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { by: string; goal: string };
+  params: Promise<{ by: string; goal: string }>;
 }) {
+  const params = await paramsPromise;
   const cityKey = normalizeCity(params.by);
   const goalData = getGoalDataFromSlug(params.goal);
 

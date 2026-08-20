@@ -5,7 +5,7 @@ import { normalizeCity } from '../../lib/matching';
 import { searchServices } from '../../lib/matchingDb';
 import { logError } from '../../lib/errorLogger';
 import { wrapServerAction } from '../../lib/actionWrapper';
-import { getServiceSupabase } from '../../lib/serviceSupabase';
+import { getUserSupabase } from '../../lib/userSupabase';
 import type { Recommendation } from './recommendationTypes';
 export type { Recommendation } from './recommendationTypes';
 
@@ -15,8 +15,6 @@ const parseNumber = (value: string | null): number | null => {
   if (Number.isNaN(parsed)) return null;
   return parsed;
 };
-
-const getSupabase = () => getServiceSupabase();
 
 const normalizePreferenceValue = (value: string | null | undefined) => {
   if (!value) return null;
@@ -33,7 +31,7 @@ export const updateUserPreferencesFromSearch = wrapServerAction(
       return { ok: false, message: 'Mangler innlogging for å lagre preferanser.' };
     }
 
-    const supabase = getSupabase();
+    const supabase = getUserSupabase(accessToken);
     if (!supabase) {
       return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
     }
@@ -91,7 +89,7 @@ export async function getRecommendations(
     return { locationLabel: null, recommendations: [] };
   }
 
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase) {
     return { locationLabel: null, recommendations: [] };
   }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 type Props = {
@@ -85,12 +86,12 @@ export default function FloatingFilterBar({
           <span className="max-w-[100px] truncate text-sm font-medium text-slate-700">
             {displayLocation}
           </span>
-          <a
+          <Link
             href="/"
             className="shrink-0 text-[11px] text-slate-400 transition-colors hover:text-brand-forest"
           >
             Endre
-          </a>
+          </Link>
         </div>
       )}
 

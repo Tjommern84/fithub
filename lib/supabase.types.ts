@@ -10,5 +10,4 @@
  * Then update lib/supabaseClient.ts to use the generated types.
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Database = any;

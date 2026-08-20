@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useFormState } from 'react-dom';
+import { use, useActionState, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase, isSupabaseConfigured } from '../../../../lib/supabaseClient';
 import { claimServiceWithOrgnr, type ClaimWithOrgnrStatus } from '../../[id]/actions';
 
-type Props = { params: { serviceId: string } };
+type Props = { params: Promise<{ serviceId: string }> };
 
 type ServiceInfo = { name: string; hasOrgnr: boolean; isFacility: boolean };
 
@@ -17,15 +16,15 @@ const initialState: ClaimWithOrgnrStatus = {
 };
 
 export default function KrevProfilPage({ params }: Props) {
-  const { serviceId } = params;
+  const { serviceId } = use(params);
   const [session, setSession] = useState<{ access_token: string } | null>(null);
   const [service, setService] = useState<ServiceInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(supabase));
 
-  const [state, formAction] = useFormState(claimServiceWithOrgnr, initialState);
+  const [state, formAction] = useActionState(claimServiceWithOrgnr, initialState);
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return; }
+    if (!supabase) return;
     let mounted = true;
     (async () => {
       const [{ data: sessionData }, { data: svcData }] = await Promise.all([
@@ -59,7 +58,7 @@ export default function KrevProfilPage({ params }: Props) {
       options: { emailRedirectTo: redirectTo },
     });
     setOtpStatus(error ? 'error' : 'sent');
-  }, [supabase, otpEmail, serviceId]);
+  }, [otpEmail, serviceId]);
 
   if (!isSupabaseConfigured) {
     return <ErrorPage message="Supabase er ikke konfigurert." />;

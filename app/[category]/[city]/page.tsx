@@ -23,10 +23,11 @@ export function generateStaticParams() {
 }
 
 export async function generateMetadata({
-  params,
+  params: paramsPromise,
 }: {
-  params: { category: string; city: string };
+  params: Promise<{ category: string; city: string }>;
 }): Promise<Metadata> {
+  const params = await paramsPromise;
   const catConfig = getCategoryConfig(params.category);
   if (!catConfig) return { title: 'FitHub' };
   const displayCity = capitalizeCity(params.city);
@@ -172,10 +173,11 @@ function ServiceCard({ item, resultsUrl }: { item: RankedService; resultsUrl: st
 }
 
 export default async function CategoryCityPage({
-  params,
+  params: paramsPromise,
 }: {
-  params: { category: string; city: string };
+  params: Promise<{ category: string; city: string }>;
 }) {
+  const params = await paramsPromise;
   const mainCategory = parseMainCategory(params.category);
   if (!mainCategory) notFound();
 

@@ -18,12 +18,6 @@ export default function TopNav() {
           <ExploreActivitiesLink className="text-2xl font-medium text-white/70 transition hover:text-white">
             Utforsk aktiviteter
           </ExploreActivitiesLink>
-          <Link href="/tilbydere" className="text-2xl font-medium text-white/70 transition hover:text-white">
-            Tilbydere
-          </Link>
-          <Link href="/magasin" className="text-2xl font-medium text-white/70 transition hover:text-white">
-            Magasin
-          </Link>
           <Link href="/om-oss" className="text-2xl font-medium text-white/70 transition hover:text-white">
             Om oss
           </Link>

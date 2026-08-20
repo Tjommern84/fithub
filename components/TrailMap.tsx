@@ -8,51 +8,73 @@ import type { Settlement } from '../lib/settlementsDb';
 import type { Destination, DestinationType } from '../lib/destinationsDb';
 import type { WalkingRoute } from '../lib/orsClient';
 import DestinationPanel from './DestinationPanel';
+import { configureLeafletIcons } from '../lib/leafletIcons';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+configureLeafletIcons();
 
 const DRAMMEN: [number, number] = [59.7440, 10.2045];
 
 const TRAIL_COLORS: Record<TrailType, string> = {
-  fotrute: '#16a34a',
-  skiloype: '#2563eb',
-  sykkelrute: '#f97316',
-  annet: '#6b7280',
+  fotrute:    '#16a34a',
+  skiloype:   '#3b82f6',
+  sykkelrute: '#D4872A',
+  annet:      '#64748b',
 };
 
 const TRAIL_LABELS: Record<TrailType, string> = {
-  fotrute: 'Fotrute',
-  skiloype: 'Skiløype',
+  fotrute:    'Fotrute',
+  skiloype:   'Skiløype',
   sykkelrute: 'Sykkelrute',
-  annet: 'Annet',
+  annet:      'Annet',
 };
 
-const SETTLEMENT_COLOR = '#a855f7';
+const SETTLEMENT_COLOR = '#8b5cf6';
+
+const TRANSIT_COLOR = '#0ea5e9';
+
+const TRANSIT_MODE_LABELS: Record<string, string> = {
+  bus:   'buss',
+  rail:  'tog',
+  metro: 'T-bane',
+  tram:  'trikk',
+  water: 'båt/ferge',
+  air:   'fly',
+  lift:  'heis',
+};
+
+type TransitStop = { id: string; name: string; transportMode: string | null; lat: number; lon: number };
 
 const DESTINATION_COLORS: Record<DestinationType, string> = {
-  peak:      '#f59e0b',   // amber — fjelltoppar
-  lake:      '#3b82f6',   // blue — tjern/vann
-  viewpoint: '#8b5cf6',   // violet — utsikt
-  shelter:   '#10b981',   // emerald — gapahuk
-  hut:       '#ef4444',   // red — hytter
+  peak:      '#f59e0b',
+  lake:      '#3b82f6',
+  viewpoint: '#8b5cf6',
+  shelter:   '#10b981',
+  hut:       '#ef4444',
 };
 
-const DESTINATION_ICONS: Record<DestinationType, string> = {
-  peak:      '🏔',
-  lake:      '🌊',
-  viewpoint: '👁',
-  shelter:   '⛺',
-  hut:       '🏠',
+const DESTINATION_LABELS: Record<DestinationType, string> = {
+  peak:      'Fjelltopp',
+  lake:      'Vann/tjern',
+  viewpoint: 'Utsiktspunkt',
+  shelter:   'Gapahuk',
+  hut:       'Hytte',
 };
 
-const ROUTE_COLOR = '#f97316'; // oransje — bereknet rute til destinasjon
+const ROUTE_COLOR = '#D4872A';
+
+type FilterChip = 'alle' | TrailType | 'turmaal' | 'tettsteder' | 'kollektiv';
+
+const CHIP_OPTIONS: Array<{ value: FilterChip; label: string }> = [
+  { value: 'alle',       label: 'Alle' },
+  { value: 'fotrute',    label: 'Fotrute' },
+  { value: 'skiloype',   label: 'Skiløype' },
+  { value: 'sykkelrute', label: 'Sykkelrute' },
+  { value: 'turmaal',    label: 'Turmål' },
+  { value: 'tettsteder', label: 'Tettsteder' },
+  { value: 'kollektiv',  label: '🚌 Kollektivt' },
+];
 
 function formatDistance(distanceM: number): string {
   if (distanceM < 1000) return '< 1 km';
@@ -125,7 +147,6 @@ function buildChainedGroups(inputTrails: Trail[]): ChainedGroupsResult {
     else nameGroups.set(key, [trail]);
   }
 
-  // Union-find over navne-gruppe-nøkler
   const parent = new Map<string, string>();
   for (const key of nameGroups.keys()) parent.set(key, key);
   const find = (k: string): string => {
@@ -185,7 +206,6 @@ function buildChainedGroups(inputTrails: Trail[]): ChainedGroupsResult {
         }
       }
     }
-    // Eksakt 2 distinkte grupper møtes → trygg kobling. 1 = ingen nabo. 3+ = reelt kryss, hopp over.
     if (nearbyGroupKeys.size === 2) {
       const [a, b] = Array.from(nearbyGroupKeys);
       union(a, b);
@@ -204,13 +224,9 @@ function buildChainedGroups(inputTrails: Trail[]): ChainedGroupsResult {
   const trailIdToKey = new Map<string, string>();
   for (const memberKeys of rootToKeys.values()) {
     const sortedKeys = [...memberKeys].sort();
-    // Sortert kombinasjon av underliggende nøkler — stabil/deterministisk uavhengig av
-    // beregningsrekkefølge (union-find sin root kan variere mellom kjøringer).
     const chainKey = sortedKeys.length === 1 ? sortedKeys[0] : `chain::${sortedKeys.join('|')}`;
     const allTrails = sortedKeys.flatMap((k) => nameGroups.get(k)!);
 
-    // Representant-navn: største navngitte undergruppe vinner over "Ukjent" uavhengig av
-    // størrelse; blant grupper med samme navngitt-status, størst segment-antall vinner.
     let bestKey = sortedKeys[0];
     for (const k of sortedKeys.slice(1)) {
       const candidate = nameGroups.get(k)!;
@@ -275,13 +291,85 @@ function SelectionWatcher({ groupKey, trails }: { groupKey: string | null; trail
       for (const point of t.coordinates) bounds.extend(point);
     }
     if (bounds.isValid()) map.fitBounds(bounds, { maxZoom: 16 });
-    // Kjør kun når valgt gruppe-nøkkel endres, ikke ved hver refetch av samme gruppe
-    // (en ny `trails`-array pr. viewport-fetch ville ellers re-trigget fitBounds
-    // og kjempet mot brukerens pan/zoom).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, groupKey]);
 
   return null;
+}
+
+function TrailTypeIcon({ type, size = 16 }: { type: TrailType; size?: number }) {
+  if (type === 'fotrute') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <ellipse cx="5.5" cy="3" rx="1.8" ry="2.2" />
+      <ellipse cx="10.5" cy="6.5" rx="1.8" ry="2.2" />
+      <ellipse cx="5.5" cy="10.5" rx="1.5" ry="1.8" />
+      <ellipse cx="10.5" cy="14" rx="1.5" ry="1.8" />
+    </svg>
+  );
+  if (type === 'skiloype') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M1 5 Q4 3 8 6 Q12 9 15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M1 11 Q4 9 8 12 Q12 15 15 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+  if (type === 'sykkelrute') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="4" cy="11" r="3" stroke="currentColor" strokeWidth="1.5"/>
+      <circle cx="12" cy="11" r="3" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M8 4 L5 11 M8 4 L12 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5.5 7.5 L10.5 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="8" cy="4" r="1.2" fill="currentColor"/>
+    </svg>
+  );
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 2 L15 13 H1 Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <circle cx="8" cy="10" r="1" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function DestinationSvgIcon({ type, size = 16 }: { type: DestinationType; size?: number }) {
+  if (type === 'peak') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 2 L15 13 H1 Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M5 10 L8 6 L11 10" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" opacity=".5"/>
+    </svg>
+  );
+  if (type === 'lake') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M1 9 Q3.5 6 6 9 Q8.5 12 11 9 Q13 7 15 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M1 5.5 Q3.5 2.5 6 5.5 Q8.5 8.5 11 5.5 Q13 3.5 15 5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" opacity=".45"/>
+    </svg>
+  );
+  if (type === 'viewpoint') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M1 8 C3 5 5 4 8 8 C11 12 13 11 15 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.5"/>
+    </svg>
+  );
+  if (type === 'shelter') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M2 14 H14 M3 14 V8 L8 3 L13 8 V14" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <path d="M6 14 V10 H10 V14" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    </svg>
+  );
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M2 14 H14 M3 14 V7 L8 3 L13 7 V14" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+      <rect x="6" y="9" width="4" height="5" stroke="currentColor" strokeWidth="1.5"/>
+      <rect x="7" y="5" width="2" height="2.5" fill="currentColor"/>
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M8 1v2.5M8 12.5V15M1 8h2.5M12.5 8H15M3.05 3.05l1.77 1.77M11.18 11.18l1.77 1.77M12.95 3.05l-1.77 1.77M4.82 11.18l-1.77 1.77" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
 }
 
 export default function TrailMap({ initialDestId }: { initialDestId?: string }) {
@@ -289,32 +377,43 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   const [trails, setTrails] = useState<Trail[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
-  const [showSettlements, setShowSettlements] = useState(true);
-  const [showDestinations, setShowDestinations] = useState(true);
+  const [transitStops, setTransitStops] = useState<TransitStop[]>([]);
+  const [activeChip, setActiveChip] = useState<FilterChip>('turmaal');
+  const [showSettings, setShowSettings] = useState(false);
   const [selectedDestId, setSelectedDestId] = useState<string | null>(initialDestId ?? null);
   const [footRoute, setFootRoute] = useState<WalkingRoute | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
-  // Hvilken rute som faktisk vises på kartet (kan overstyres av panel-modusen)
   const [activeRouteCoords, setActiveRouteCoords] = useState<[number, number][]>([]);
   const [activeRouteColor, setActiveRouteColor] = useState(ROUTE_COLOR);
   const [activeMode, setActiveMode] = useState<'foot' | 'cycling' | 'car' | 'transit'>('foot');
   const [pinMode, setPinMode] = useState(false);
   const [pinPosition, setPinPosition] = useState<[number, number] | null>(null);
   const [pinKey, setPinKey] = useState(0);
-  const startPoint: [number, number] = pinPosition ?? center;
-  const [visibleTypes, setVisibleTypes] = useState<Record<TrailType, boolean>>({
-    fotrute: true,
-    skiloype: true,
-    sykkelrute: true,
-    annet: true,
-  });
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
   // Skjul ferdig-kjedede grupper der SAMLET lengde er under 1 km — standard PÅ (skjult),
   // siden motivasjonen ("rotete kart, vanskelig å finne lange ruter") gjelder de fleste
-  // brukstilfeller. Reversibel checkbox i stedet for en hardkodet regel, siden det gir
-  // brukeren en vei tilbake uten kodeendring (samme filosofi som type-/Tettsteder-toggles).
+  // brukstilfeller.
   const [hideShortTrails, setHideShortTrails] = useState(true);
   const fetchSeq = useRef(0);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  const startPoint = useMemo<[number, number]>(
+    () => pinPosition ?? center,
+    [pinPosition, center],
+  );
+
+  // Derived filter state from chip selection
+  const visibleTypes = useMemo((): Record<TrailType, boolean> => {
+    if (activeChip === 'alle')       return { fotrute: true,  skiloype: true,  sykkelrute: true,  annet: true  };
+    if (activeChip === 'fotrute')    return { fotrute: true,  skiloype: false, sykkelrute: false, annet: false };
+    if (activeChip === 'skiloype')   return { fotrute: false, skiloype: true,  sykkelrute: false, annet: false };
+    if (activeChip === 'sykkelrute') return { fotrute: false, skiloype: false, sykkelrute: true,  annet: false };
+    return { fotrute: false, skiloype: false, sykkelrute: false, annet: false };
+  }, [activeChip]);
+
+  const showDestinations = activeChip === 'alle' || activeChip === 'turmaal';
+  const showSettlements  = true;
+  const showTransit      = activeChip === 'alle' || activeChip === 'kollektiv';
 
   const visibleTrails = useMemo(
     () => trails.filter((t) => visibleTypes[t.trailType]),
@@ -324,10 +423,8 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   const chainedVisible = useMemo(() => buildChainedGroups(visibleTrails), [visibleTrails]);
 
   // Filtreres på gruppens TOTALE lengde etter kjeding, ikke enkeltsegmenter — en lang rute
-  // bygget av mange korte Geonorge-segmenter (f.eks. "Gulskogen – Konnerudkollen" sine
-  // 24×~0,1 km) skal IKKE brytes opp eller skjules siden den TOTALT er over 1 km.
-  // `totalLengthKm === null` betyr at INGEN segmenter i gruppen har lengdedata i kildedata —
-  // usikker lengde er ikke det samme som bekreftet kort, så disse vises uansett.
+  // bygget av mange korte Geonorge-segmenter skal IKKE brytes opp eller skjules siden den
+  // TOTALT er over 1 km. `totalLengthKm === null` betyr usikker lengde — vises uansett.
   const visibleGroups = useMemo(() => {
     if (!hideShortTrails) return chainedVisible.groups;
     return chainedVisible.groups.filter(
@@ -335,8 +432,6 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
     );
   }, [chainedVisible, hideShortTrails]);
 
-  // Samme filtrerte sett brukes til BÅDE kart-Polyline-rendering og listepanelet under —
-  // ett sannhetssted, som resten av filen allerede er bygget opp etter.
   const keptTrailIds = useMemo(
     () => new Set(visibleGroups.flatMap((g) => g.trails.map((t) => t.id))),
     [visibleGroups]
@@ -349,7 +444,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
       .map(d => ({ ...d, distanceM: origin.distanceTo(L.latLng([d.lat, d.lon])) }))
       .sort((a, b) => a.distanceM - b.distanceM)
       .slice(0, 20);
-  }, [destinations, center, showDestinations]);
+  }, [destinations, startPoint, showDestinations]);
 
   const groupedTrailList = useMemo(() => {
     const origin = L.latLng(startPoint);
@@ -366,28 +461,40 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
         ),
       }))
       .sort((a, b) => a.distanceM - b.distanceM);
-  }, [visibleGroups, center]);
+  }, [visibleGroups, startPoint]);
 
-  // Bevisst kjedet fra full `trails` (ikke `visibleTrails`) — samme presedens som tidligere
-  // (kun navne-basert) selectedGroup: valget skal ikke forsvinne bare fordi brukeren skrur av
-  // typen i legend, kun hvis segmentene faller helt utenfor viewport ved panorering.
+  // Bevisst kjedet fra full `trails` — valget skal ikke forsvinne bare fordi brukeren bytter chip
   const chainedFull = useMemo(() => buildChainedGroups(trails), [trails]);
   const selectedGroup = useMemo(() => {
     if (!selectedGroupKey) return null;
     return chainedFull.groups.find((g) => g.key === selectedGroupKey) ?? null;
   }, [chainedFull, selectedGroupKey]);
 
-  const allTypesHidden = (Object.keys(visibleTypes) as TrailType[]).every(
-    (t) => !visibleTypes[t]
-  );
+  // Unified sorted list for panel and mobile cards
+  const unifiedList = useMemo(() => {
+    const items = [
+      ...sortedDestinationList.map(d => ({ kind: 'destination' as const, item: d })),
+      ...groupedTrailList.map(t => ({ kind: 'trail' as const, item: t })),
+    ];
+    return items.sort((a, b) => a.item.distanceM - b.item.distanceM);
+  }, [sortedDestinationList, groupedTrailList]);
+
+  // Click-outside closes the settings dropdown
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+    if (showSettings) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showSettings]);
 
   useEffect(() => {
     if (!('geolocation' in navigator)) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
-      () => {
-        /* behold Drammen som fallback */
-      },
+      () => { /* behold Drammen som fallback */ },
       { timeout: 8000 }
     );
   }, []);
@@ -420,6 +527,13 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
         if (data !== null && seq === fetchSeq.current) setDestinations(data);
       })
       .catch(() => {});
+
+    fetch(`/api/transit-stops?${params.toString()}`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data: TransitStop[] | null) => {
+        if (data !== null && seq === fetchSeq.current) setTransitStops(data);
+      })
+      .catch(() => {});
   }, []);
 
   const selectedDestination = useMemo(
@@ -445,7 +559,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
       })
       .catch(() => {})
       .finally(() => setRouteLoading(false));
-  }, [center]);
+  }, [startPoint]);
 
   const handleModeChange = useCallback((
     mode: 'foot' | 'cycling' | 'car' | 'transit',
@@ -453,19 +567,95 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   ) => {
     setActiveMode(mode);
     const colors: Record<string, string> = {
-      foot: ROUTE_COLOR,
-      cycling: '#16a34a',
-      car: '#3b82f6',
-      transit: '#8b5cf6',
+      foot:     ROUTE_COLOR,
+      cycling:  '#16a34a',
+      car:      '#3b82f6',
+      transit:  '#8b5cf6',
     };
     setActiveRouteColor(colors[mode] ?? ROUTE_COLOR);
     setActiveRouteCoords(coords ?? []);
   }, []);
 
+  const totalCount = unifiedList.length;
+
   return (
     <div className="w-full">
+
+      {/* ── Kategori-chips + Kartinnstillinger ──────────────────────────── */}
+      <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex flex-nowrap items-center gap-2">
+          {CHIP_OPTIONS.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              onClick={() => setActiveChip(chip.value)}
+              className="flex-shrink-0 whitespace-nowrap px-4 py-1.5 text-sm font-medium transition-all"
+              style={
+                activeChip === chip.value
+                  ? { background: '#0A1A0E', color: '#fff', borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,.25)' }
+                  : { background: '#fff', color: '#374151', borderRadius: 14, boxShadow: '0 1px 3px rgba(0,0,0,.10)' }
+              }
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative ml-auto flex-shrink-0" ref={settingsRef}>
+          <button
+            type="button"
+            onClick={() => setShowSettings((v) => !v)}
+            className="flex items-center gap-1.5 border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+            style={{ borderRadius: 10 }}
+          >
+            <SettingsIcon />
+            Kartinnstillinger
+          </button>
+
+          {showSettings && (
+            <div
+              className="absolute right-0 top-full z-dropdown mt-1.5 min-w-[220px] border border-slate-100 bg-white p-4 shadow-xl"
+              style={{ borderRadius: 16 }}
+            >
+              <label className="flex cursor-pointer items-center gap-2.5 py-1.5 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={hideShortTrails}
+                  onChange={(e) => setHideShortTrails(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                Skjul korte ruter (&lt;1 km)
+              </label>
+              <label className="flex cursor-pointer items-center gap-2.5 py-1.5 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={pinMode}
+                  onChange={(e) => {
+                    setPinMode(e.target.checked);
+                    if (!e.target.checked) setPinPosition(null);
+                  }}
+                  className="h-4 w-4"
+                />
+                Sett startpunkt
+              </label>
+              {pinMode && !pinPosition && (
+                <p className="mt-1.5 pl-6 text-xs italic text-slate-400">
+                  Klikk på kartet for å plassere startpunkt
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Kart + Resultatpanel ─────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 lg:flex-row">
-        <div className="w-full overflow-hidden rounded-2xl border border-slate-200 shadow-sm lg:flex-1" style={{ height: 560 }}>
+
+        {/* Kart */}
+        <div
+          className="h-[60vh] w-full overflow-hidden lg:h-[700px] lg:flex-1"
+          style={{ borderRadius: 22 }}
+        >
           <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -493,7 +683,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                 position={pinPosition}
                 draggable
                 icon={L.divIcon({
-                  html: `<div style="background:#f97316;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 4px rgba(0,0,0,.4)"></div>`,
+                  html: `<div style="background:#D4872A;width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 2px 4px rgba(0,0,0,.4)"></div>`,
                   className: '',
                   iconSize: [26, 26],
                   iconAnchor: [13, 26],
@@ -530,13 +720,13 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                 >
                   <Popup>
                     <div className="min-w-[160px]">
-                      <p className="font-semibold text-sm leading-snug">{trail.name ?? 'Ukjent rute'}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{TRAIL_LABELS[trail.trailType]}</p>
+                      <p className="text-sm font-semibold leading-snug">{trail.name ?? 'Ukjent rute'}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{TRAIL_LABELS[trail.trailType]}</p>
                       {trail.maintainer && (
                         <p className="text-xs text-slate-500">{trail.maintainer}</p>
                       )}
                       {trail.lengthKm != null && (
-                        <p className="text-xs text-slate-400 mt-1">{trail.lengthKm.toFixed(1)} km</p>
+                        <p className="mt-1 text-xs text-slate-400">{trail.lengthKm.toFixed(1)} km</p>
                       )}
                     </div>
                   </Popup>
@@ -549,7 +739,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                 {destinations.map((dest) => {
                   const color = DESTINATION_COLORS[dest.destinationType] ?? '#f59e0b';
                   const icon = L.divIcon({
-                    html: `<div style="background:${color};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);${dest.id === selectedDestId ? 'outline:2px solid ' + color + ';outline-offset:2px' : ''}">${DESTINATION_ICONS[dest.destinationType] ?? '📍'}</div>`,
+                    html: `<div style="background:${color};width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,.3);${dest.id === selectedDestId ? 'outline:2px solid ' + color + ';outline-offset:2px' : ''}"></div>`,
                     className: '',
                     iconSize: [22, 22],
                     iconAnchor: [11, 11],
@@ -563,9 +753,9 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                     >
                       <Popup>
                         <div className="min-w-[140px]">
-                          <p className="font-semibold text-sm">{DESTINATION_ICONS[dest.destinationType]} {dest.name}</p>
+                          <p className="text-sm font-semibold">{dest.name}</p>
                           {dest.elevationM != null && (
-                            <p className="text-xs text-slate-500 mt-0.5">{dest.elevationM} moh</p>
+                            <p className="mt-0.5 text-xs text-slate-500">{dest.elevationM} moh</p>
                           )}
                         </div>
                       </Popup>
@@ -575,7 +765,6 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
               </MarkerClusterGroup>
             )}
 
-            {/* Aktiv rute til valgt destinasjon */}
             {activeRouteCoords.length > 0 && (
               <Polyline
                 positions={activeRouteCoords.map(([lon, lat]) => [lat, lon])}
@@ -592,12 +781,32 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
               >
                 <Popup>
                   <div className="min-w-[160px]">
-                    <p className="font-semibold text-sm leading-snug">{settlement.name ?? 'Ukjent tettsted'}</p>
+                    <p className="text-sm font-semibold leading-snug">{settlement.name ?? 'Ukjent tettsted'}</p>
                     {settlement.municipality && (
-                      <p className="text-xs text-slate-500 mt-0.5">{settlement.municipality}</p>
+                      <p className="mt-0.5 text-xs text-slate-500">{settlement.municipality}</p>
                     )}
                     {settlement.population != null && (
-                      <p className="text-xs text-slate-400 mt-1">{settlement.population.toLocaleString('nb-NO')} innbyggere</p>
+                      <p className="mt-1 text-xs text-slate-400">{settlement.population.toLocaleString('nb-NO')} innbyggere</p>
+                    )}
+                  </div>
+                </Popup>
+              </CircleMarker>
+            ))}
+
+            {showTransit && transitStops.map((stop) => (
+              <CircleMarker
+                key={stop.id}
+                center={[stop.lat, stop.lon]}
+                radius={5}
+                pathOptions={{ color: TRANSIT_COLOR, fillColor: TRANSIT_COLOR, fillOpacity: 0.7, weight: 1 }}
+              >
+                <Popup>
+                  <div className="min-w-[160px]">
+                    <p className="text-sm font-semibold leading-snug">{stop.name}</p>
+                    {stop.transportMode && (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {TRANSIT_MODE_LABELS[stop.transportMode] ?? stop.transportMode}
+                      </p>
                     )}
                   </div>
                 </Popup>
@@ -606,200 +815,234 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
           </MapContainer>
         </div>
 
+        {/* Resultatpanel — kun desktop */}
         <div
-          className="w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-sm lg:w-80 lg:shrink-0"
-          style={{ maxHeight: 560 }}
+          className="hidden flex-col overflow-hidden bg-white lg:flex"
+          style={{ width: 340, height: 700, borderRadius: 22, flexShrink: 0, boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}
         >
-          {selectedDestination && (
-            <DestinationPanel
-              destination={selectedDestination}
-              userLat={startPoint[0]}
-              userLon={startPoint[1]}
-              footRoute={footRoute}
-              footLoading={routeLoading}
-              activeMode={activeMode}
-              onModeChange={handleModeChange}
-              onClose={() => {
-                setSelectedDestId(null);
-                setActiveRouteCoords([]);
-                setFootRoute(null);
-              }}
-            />
-          )}
+          {/* Panel header */}
+          <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
+            <span className="text-sm font-semibold text-slate-900">
+              {totalCount} {totalCount === 1 ? 'resultat' : 'resultater'}
+            </span>
+            <span className="text-xs text-slate-400">Nærmest ▼</span>
+          </div>
 
-          {selectedGroup && (
-            <div className="relative border-b border-slate-100 bg-brand-cream p-4">
-              <button
-                type="button"
-                onClick={() => setSelectedGroupKey(null)}
-                aria-label="Lukk"
-                className="absolute right-3 top-3 text-slate-400 transition hover:text-slate-600"
-              >
-                ✕
-              </button>
-              <p className="pr-6 font-heading text-sm font-bold leading-snug text-slate-900">
-                {selectedGroup.name ?? 'Ukjent rute'}
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <span
-                  className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
-                  style={{ backgroundColor: TRAIL_COLORS[selectedGroup.trailType] }}
+          {/* Panel body */}
+          <div className="flex-1 overflow-y-auto">
+
+            {selectedDestination && (
+              <DestinationPanel
+                key={`${selectedDestination.id}-${startPoint[0]}-${startPoint[1]}`}
+                destination={selectedDestination}
+                userLat={startPoint[0]}
+                userLon={startPoint[1]}
+                footRoute={footRoute}
+                footLoading={routeLoading}
+                activeMode={activeMode}
+                onModeChange={handleModeChange}
+                onClose={() => {
+                  setSelectedDestId(null);
+                  setActiveRouteCoords([]);
+                  setFootRoute(null);
+                }}
+              />
+            )}
+
+            {selectedGroup && (
+              <div className="relative border-b border-slate-100 bg-brand-cream px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupKey(null)}
+                  aria-label="Lukk"
+                  className="absolute right-3 top-3 text-slate-400 transition hover:text-slate-600"
                 >
-                  {TRAIL_LABELS[selectedGroup.trailType]}
-                </span>
-                {selectedGroup.totalLengthKm != null && (
-                  <span className="text-xs text-slate-500">{selectedGroup.totalLengthKm.toFixed(1)} km</span>
-                )}
+                  ✕
+                </button>
+                <div className="flex items-start gap-3 pr-6">
+                  <div
+                    className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
+                    style={{ background: `${TRAIL_COLORS[selectedGroup.trailType]}20`, color: TRAIL_COLORS[selectedGroup.trailType] }}
+                  >
+                    <TrailTypeIcon type={selectedGroup.trailType} size={16} />
+                  </div>
+                  <div>
+                    <p className="font-heading text-sm font-bold leading-snug text-slate-900">
+                      {selectedGroup.name ?? 'Ukjent rute'}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
+                        style={{ backgroundColor: TRAIL_COLORS[selectedGroup.trailType] }}
+                      >
+                        {TRAIL_LABELS[selectedGroup.trailType]}
+                      </span>
+                      {selectedGroup.totalLengthKm != null && (
+                        <span className="text-xs text-slate-500">{selectedGroup.totalLengthKm.toFixed(1)} km</span>
+                      )}
+                    </div>
+                    {selectedGroup.maintainer && (
+                      <p className="mt-1 text-xs text-slate-400">{selectedGroup.maintainer}</p>
+                    )}
+                  </div>
+                </div>
               </div>
-              {selectedGroup.maintainer && (
-                <p className="mt-1 text-xs text-slate-400">{selectedGroup.maintainer}</p>
-              )}
-            </div>
-          )}
+            )}
 
-          {sortedDestinationList.length > 0 && (
-            <div className="border-b border-slate-200">
-              <p className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                Turmål i nærheten
+            {unifiedList.length === 0 ? (
+              <p className="p-4 text-sm text-slate-500">
+                {activeChip === 'tettsteder'
+                  ? 'Tettsteder vises som lilla prikker på kartet.'
+                  : activeChip === 'kollektiv'
+                  ? 'Kollektivstasjoner vises på kartet.'
+                  : 'Ingen resultater i dette området.'}
               </p>
-              <ul className="divide-y divide-slate-100">
-                {sortedDestinationList.map(dest => (
-                  <li key={dest.id}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectDestination(dest)}
-                      className={[
-                        'w-full px-4 py-2.5 text-left transition hover:bg-amber-50',
-                        dest.id === selectedDestId ? 'bg-amber-50' : '',
-                      ].join(' ')}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="shrink-0 text-sm">{DESTINATION_ICONS[dest.destinationType]}</span>
-                        <span className="truncate text-sm font-medium text-slate-900">{dest.name}</span>
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-1.5 pl-6 text-xs text-slate-500">
-                        {dest.elevationM != null && <span>{dest.elevationM} moh</span>}
-                        <span>· {formatDistance(dest.distanceM)}</span>
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {unifiedList.map((entry) => {
+                  if (entry.kind === 'destination') {
+                    const dest = entry.item;
+                    const color = DESTINATION_COLORS[dest.destinationType];
+                    return (
+                      <button
+                        key={dest.id}
+                        type="button"
+                        onClick={() => handleSelectDestination(dest)}
+                        className="w-full px-4 py-3 text-left transition hover:bg-slate-50"
+                        style={dest.id === selectedDestId ? { background: '#fef9ee' } : {}}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div
+                            className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
+                            style={{ background: `${color}20`, color }}
+                          >
+                            <DestinationSvgIcon type={dest.destinationType} size={15} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-slate-900">{dest.name}</p>
+                            <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                              <span style={{ color }} className="font-medium">{DESTINATION_LABELS[dest.destinationType]}</span>
+                              {dest.elevationM != null && <span>· {dest.elevationM} moh</span>}
+                              <span>· {formatDistance(dest.distanceM)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  }
 
-          {allTypesHidden ? (
-            <p className="p-4 text-sm text-slate-500">
-              Alle rutetyper er skjult — slå på en type for å se ruter.
-            </p>
-          ) : groupedTrailList.length === 0 ? (
-            <p className="p-4 text-sm text-slate-500">Ingen ruter i dette området.</p>
-          ) : (
-            <ul className="space-y-1.5 p-2">
-              {groupedTrailList.map((group) => {
-                const isSelected = group.key === selectedGroupKey;
-                return (
-                  <li key={group.key}>
+                  const group = entry.item;
+                  const isSelected = group.key === selectedGroupKey;
+                  const color = TRAIL_COLORS[group.trailType];
+                  return (
                     <button
+                      key={group.key}
                       type="button"
                       onClick={() => setSelectedGroupKey(group.key)}
-                      className={[
-                        'w-full rounded-xl border p-3 text-left transition-all',
-                        isSelected
-                          ? 'border-brand-copper bg-brand-cream ring-1 ring-brand-copper'
-                          : 'border-slate-100 bg-white shadow-sm hover:border-slate-200 hover:shadow',
-                      ].join(' ')}
+                      className="w-full px-4 py-3 text-left transition hover:bg-slate-50"
+                      style={isSelected ? { background: '#f0fdf4' } : {}}
                     >
-                      <div className="flex items-start gap-2">
-                        <span
-                          className="mt-1 inline-block h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: TRAIL_COLORS[group.trailType] }}
-                        />
-                        <span className="truncate text-sm font-medium text-slate-900">
-                          {group.name ?? 'Ukjent rute'}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-1.5 pl-4">
-                        <span
-                          className="rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
-                          style={{ backgroundColor: TRAIL_COLORS[group.trailType] }}
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl"
+                          style={{ background: `${color}20`, color }}
                         >
-                          {TRAIL_LABELS[group.trailType]}
-                        </span>
-                        {group.totalLengthKm != null && (
-                          <span className="text-[11px] text-slate-500">{group.totalLengthKm.toFixed(1)} km</span>
-                        )}
-                        <span className="text-[11px] text-slate-400">{formatDistance(group.distanceM)}</span>
+                          <TrailTypeIcon type={group.trailType} size={15} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-slate-900">
+                            {group.name ?? 'Ukjent rute'}
+                          </p>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+                            <span style={{ color }} className="font-medium">{TRAIL_LABELS[group.trailType]}</span>
+                            {group.totalLengthKm != null && <span>· {group.totalLengthKm.toFixed(1)} km</span>}
+                            <span>· {formatDistance(group.distanceM)}</span>
+                          </div>
+                        </div>
                       </div>
                     </button>
-                  </li>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mobil: horisontal kortliste ──────────────────────────────────── */}
+      <div
+        className="mt-4 -mx-4 overflow-x-auto lg:hidden"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        <div className="flex gap-3 px-4 pb-2" style={{ width: 'max-content' }}>
+          {unifiedList.length === 0 ? (
+            <p className="py-2 text-sm text-slate-500">
+              {activeChip === 'tettsteder'
+                ? 'Tettsteder vises på kartet.'
+                : activeChip === 'kollektiv'
+                ? 'Kollektivstasjoner vises på kartet.'
+                : 'Ingen resultater i dette området.'}
+            </p>
+          ) : (
+            unifiedList.slice(0, 12).map((entry) => {
+              if (entry.kind === 'destination') {
+                const dest = entry.item;
+                const color = DESTINATION_COLORS[dest.destinationType];
+                return (
+                  <button
+                    key={dest.id}
+                    type="button"
+                    onClick={() => handleSelectDestination(dest)}
+                    className="flex-shrink-0 bg-white text-left"
+                    style={{ width: 160, borderRadius: 16, boxShadow: '0 2px 10px rgba(0,0,0,.09)', padding: '12px 14px' }}
+                  >
+                    <div
+                      className="mb-2 flex h-7 w-7 items-center justify-center rounded-lg"
+                      style={{ background: `${color}20`, color }}
+                    >
+                      <DestinationSvgIcon type={dest.destinationType} size={14} />
+                    </div>
+                    <p className="truncate text-sm font-semibold text-slate-900">{dest.name}</p>
+                    <p className="mt-0.5 text-xs font-medium" style={{ color }}>{DESTINATION_LABELS[dest.destinationType]}</p>
+                    {dest.elevationM != null && (
+                      <p className="text-xs text-slate-400">{dest.elevationM} moh</p>
+                    )}
+                    <p className="mt-0.5 text-xs text-slate-500">{formatDistance(dest.distanceM)}</p>
+                  </button>
                 );
-              })}
-            </ul>
+              }
+
+              const group = entry.item;
+              const color = TRAIL_COLORS[group.trailType];
+              return (
+                <button
+                  key={group.key}
+                  type="button"
+                  onClick={() => setSelectedGroupKey(group.key)}
+                  className="flex-shrink-0 bg-white text-left"
+                  style={{ width: 160, borderRadius: 16, boxShadow: '0 2px 10px rgba(0,0,0,.09)', padding: '12px 14px' }}
+                >
+                  <div
+                    className="mb-2 flex h-7 w-7 items-center justify-center rounded-lg"
+                    style={{ background: `${color}20`, color }}
+                  >
+                    <TrailTypeIcon type={group.trailType} size={14} />
+                  </div>
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {group.name ?? 'Ukjent rute'}
+                  </p>
+                  <p className="mt-0.5 text-xs font-medium" style={{ color }}>{TRAIL_LABELS[group.trailType]}</p>
+                  {group.totalLengthKm != null && (
+                    <p className="text-xs text-slate-400">{group.totalLengthKm.toFixed(1)} km</p>
+                  )}
+                  <p className="mt-0.5 text-xs text-slate-500">{formatDistance(group.distanceM)}</p>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-slate-600">
-        {(Object.keys(TRAIL_LABELS) as TrailType[]).map((type) => (
-          <label key={type} className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={visibleTypes[type]}
-              onChange={(e) =>
-                setVisibleTypes((prev) => ({ ...prev, [type]: e.target.checked }))
-              }
-              className="h-3.5 w-3.5"
-            />
-            <span className="inline-block w-4 h-1.5 rounded" style={{ backgroundColor: TRAIL_COLORS[type] }} />
-            {TRAIL_LABELS[type]}
-          </label>
-        ))}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showDestinations}
-            onChange={(e) => setShowDestinations(e.target.checked)}
-            className="h-3.5 w-3.5"
-          />
-          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: DESTINATION_COLORS.peak }} />
-          Turmål
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={showSettlements}
-            onChange={(e) => setShowSettlements(e.target.checked)}
-            className="h-3.5 w-3.5"
-          />
-          <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: SETTLEMENT_COLOR }} />
-          Tettsteder
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={hideShortTrails}
-            onChange={(e) => setHideShortTrails(e.target.checked)}
-            className="h-3.5 w-3.5"
-          />
-          Skjul korte ruter (&lt;1 km)
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={pinMode}
-            onChange={(e) => {
-              setPinMode(e.target.checked);
-              if (!e.target.checked) setPinPosition(null);
-            }}
-            className="h-3.5 w-3.5"
-          />
-          📍 Sett startpunkt
-        </label>
-        {pinMode && !pinPosition && (
-          <span className="text-xs text-slate-500 italic">Klikk på kartet for å plassere startpunktet</span>
-        )}
-      </div>
     </div>
   );
 }

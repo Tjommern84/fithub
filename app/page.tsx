@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import HomeHero from '../components/home/HomeHero';
 import HomeValueProps from '../components/home/HomeValueProps';
-import HomeNearbyActivities from '../components/home/HomeNearbyActivities';
 import HomeDestinations from '../components/home/HomeDestinations';
 import CategoryGrid from '../components/CategoryGrid';
 
@@ -38,7 +37,6 @@ export default function HomePage() {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
       <HomeHero />
       <HomeValueProps id="hvordan-funker-det" />
-      <HomeNearbyActivities />
       <HomeDestinations />
       <CategoryGrid />
     </main>

@@ -7,14 +7,16 @@ import SessionDetail from './SessionDetail';
 
 export const dynamic = 'force-dynamic';
 
-type Props = { params: { id: string } };
+type Props = { params: Promise<{ id: string }> };
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: Props): Promise<Metadata> {
+  const params = await paramsPromise;
   const session = await getGroupSession(params.id);
   return { title: session ? `${session.title} – FitHub` : 'Arrangement – FitHub' };
 }
 
-export default async function ArrangementPage({ params }: Props) {
+export default async function ArrangementPage({ params: paramsPromise }: Props) {
+  const params = await paramsPromise;
   const session = await getGroupSession(params.id);
   if (!session) notFound();
 

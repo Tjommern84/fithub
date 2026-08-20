@@ -1,6 +1,5 @@
 ﻿'use server';
 
-import { createClient } from '@supabase/supabase-js';
 import { stripe, stripeConfig, isStripeConfigured } from '../../lib/stripe';
 import { ENABLE_PAYMENTS } from '../../lib/featureFlags';
 import { invalidateServiceCaches } from '../../lib/cacheInvalidation';
@@ -8,6 +7,7 @@ import { getServiceSupabase } from '../../lib/serviceSupabase';
 import { logError } from '../../lib/errorLogger';
 import { wrapServerAction } from '../../lib/actionWrapper';
 import { AvailabilitySlot } from '../../lib/booking';
+import { getUserSupabase } from '../../lib/userSupabase';
 
 type OwnedService = {
   id: string;
@@ -43,17 +43,6 @@ type ServiceRow = {
   address?: string | null;
 };
 
-const getSupabase = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseAnonKey);
-};
-
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES: Record<string, 'jpg' | 'png' | 'webp'> = {
   'image/jpeg': 'jpg',
@@ -62,7 +51,7 @@ const ALLOWED_IMAGE_TYPES: Record<string, 'jpg' | 'png' | 'webp'> = {
 };
 
 export async function getOwnedServices(accessToken: string): Promise<OwnedService[]> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !accessToken) return [];
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -81,7 +70,7 @@ export async function getOwnedService(
   accessToken: string,
   serviceId: string
 ): Promise<ServiceRow | null> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !accessToken || !serviceId) return null;
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -104,15 +93,15 @@ export async function updateServiceProfile(
   _prevState: { ok: boolean; message: string },
   formData: FormData
 ): Promise<{ ok: boolean; message: string }> {
-  const supabase = getSupabase();
-  if (!supabase) return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const serviceId = String(formData.get('serviceId') ?? '');
 
   if (!accessToken || !serviceId) {
     return { ok: false, message: 'Du må være innlogget.' };
   }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
   if (userError || !userData.user) {
@@ -357,17 +346,17 @@ const saveAvailabilityHandler = async (
   _prevState: { ok: boolean; message: string },
   formData: FormData
 ): Promise<{ ok: boolean; message: string }> => {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const serviceId = String(formData.get('serviceId') ?? '');
   const slotsPayload = String(formData.get('slots') ?? '[]');
 
   if (!accessToken || !serviceId) {
     return { ok: false, message: 'Manglende data for tilgjengelighet.' };
+  }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -439,11 +428,6 @@ export async function uploadServiceImage(formData: FormData): Promise<{
   url?: string;
   kind?: 'cover' | 'logo';
 }> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   const accessToken = String(formData.get('accessToken') ?? '');
   const serviceId = String(formData.get('serviceId') ?? '');
   const kind = String(formData.get('kind') ?? '');
@@ -451,6 +435,11 @@ export async function uploadServiceImage(formData: FormData): Promise<{
 
   if (!accessToken || !serviceId || !kind) {
     return { ok: false, message: 'Manglende opplastingsdata.' };
+  }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   if (kind !== 'cover' && kind !== 'logo') {
@@ -526,11 +515,6 @@ export async function createCheckoutSession(
   _prevState: { ok: boolean; message: string; url?: string },
   formData: FormData
 ): Promise<{ ok: boolean; message: string; url?: string }> {
-  const supabase = getSupabase();
-  if (!supabase) {
-    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
-  }
-
   if (!ENABLE_PAYMENTS || !isStripeConfigured || !stripe) {
     return { ok: false, message: 'Betaling er ikke aktivert ennå.' };
   }
@@ -540,6 +524,11 @@ export async function createCheckoutSession(
 
   if (!accessToken || !serviceId) {
     return { ok: false, message: 'Du må være innlogget.' };
+  }
+
+  const supabase = getUserSupabase(accessToken);
+  if (!supabase) {
+    return { ok: false, message: 'Mangler Supabase-konfigurasjon.' };
   }
 
   if (!stripeConfig.priceId) {
@@ -604,7 +593,7 @@ export async function getServiceAnalytics(
   accessToken: string,
   serviceId: string
 ): Promise<ServiceAnalytics> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !accessToken || !serviceId) return { views7d: 0, views30d: 0 };
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -639,7 +628,7 @@ export async function getProfileViewTrend(
   serviceId: string,
   weeks = 8
 ): Promise<WeeklyView[]> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !accessToken || !serviceId) return [];
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -690,7 +679,7 @@ export async function getLeadsForOwnedService(
   accessToken: string,
   serviceId: string
 ): Promise<LeadRow[]> {
-  const supabase = getSupabase();
+  const supabase = getUserSupabase(accessToken);
   if (!supabase || !accessToken || !serviceId) return [];
 
   const { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
@@ -704,4 +693,3 @@ export async function getLeadsForOwnedService(
 
   return data ?? [];
 }
-

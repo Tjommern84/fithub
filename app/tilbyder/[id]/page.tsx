@@ -122,10 +122,11 @@ const buildDescription = (text: string) => {
 };
 
 export async function generateMetadata({
-  params,
+  params: paramsPromise,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }): Promise<Metadata> {
+  const params = await paramsPromise;
   const service = await resolveService(params.id);
 
   if (!service) {
@@ -184,7 +185,12 @@ const fetchRelated = async (service: Service): Promise<Service[]> => {
   }
 };
 
-export default async function ProviderPage({ params }: { params: { id: string } }) {
+export default async function ProviderPage({
+  params: paramsPromise,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const params = await paramsPromise;
   const service = await resolveService(params.id);
 
   const [relatedServices] = await Promise.all([
