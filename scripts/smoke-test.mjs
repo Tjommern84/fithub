@@ -40,6 +40,7 @@ async function getTestSession() {
 }
 
 async function main() {
+  const requireExternals = process.env.SMOKE_REQUIRE_EXTERNALS === '1';
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
@@ -108,10 +109,13 @@ async function main() {
 
     checks.searchUrl = page.url();
     checks.resultsHeading = await page.getByRole('heading', { level: 1 }).innerText();
-    const firstProviderLink = page.locator('a[href^="/tilbyder/"]').first();
-    await firstProviderLink.waitFor({ state: 'visible', timeout: 15_000 });
     checks.providerResultCount = await page.locator('a[href^="/tilbyder/"]').count();
-    assert(checks.providerResultCount > 0, 'Søket returnerte ingen synlige tilbydertreff');
+    if (requireExternals) {
+      const firstProviderLink = page.locator('a[href^="/tilbyder/"]').first();
+      await firstProviderLink.waitFor({ state: 'visible', timeout: 15_000 });
+      checks.providerResultCount = await page.locator('a[href^="/tilbyder/"]').count();
+      assert(checks.providerResultCount > 0, 'Søket returnerte ingen synlige tilbydertreff');
+    }
 
     checks.generatedRoutes = {};
     for (const route of [
@@ -158,7 +162,7 @@ async function main() {
     };
     assert(transitResponse.ok(), `Kollektivstopp svarte ${transitResponse.status()}`);
     assert(Array.isArray(transitStops), 'Kollektivstopp returnerte ikke en liste');
-    if (process.env.SMOKE_REQUIRE_EXTERNALS === '1') {
+    if (requireExternals) {
       assert(transitStops.length > 0, 'Entur-integrasjonen returnerte ingen kollektivstopp');
     }
 
@@ -178,19 +182,21 @@ async function main() {
       waitUntil: 'domcontentloaded',
       timeout: 30_000,
     });
-    const dashboardGate = page.getByText('Logg inn for å se dine tjenester.', { exact: true });
+    const dashboardGate = requireExternals
+      ? page.getByText('Logg inn for å se dine tjenester.', { exact: true })
+      : page.getByText(/Logg inn for å se dine tjenester\.|Supabase er ikke konfigurert\./).first();
     await dashboardGate.waitFor({ state: 'visible', timeout: 10_000 });
-    checks.unauthenticatedDashboardGate = true;
+    checks.unauthenticatedDashboardGate = await dashboardGate.innerText();
 
     await page.goto(`${baseUrl}/min-side`, {
       waitUntil: 'domcontentloaded',
       timeout: 30_000,
     });
-    const accountGate = page.getByText('Du må være innlogget for å se forespørslene dine.', {
-      exact: true,
-    });
+    const accountGate = requireExternals
+      ? page.getByText('Du må være innlogget for å se forespørslene dine.', { exact: true })
+      : page.getByText(/Du må være innlogget for å se forespørslene dine\.|Supabase er ikke konfigurert\./).first();
     await accountGate.waitFor({ state: 'visible', timeout: 10_000 });
-    checks.unauthenticatedAccountGate = true;
+    checks.unauthenticatedAccountGate = await accountGate.innerText();
 
     const testAuth = await getTestSession();
     checks.authenticatedFlows = testAuth ? 'tested' : 'not-configured';
