@@ -19,16 +19,13 @@ import {
 } from '../../lib/booking';
 import { getMyBookings } from '../actions/bookings';
 
-type OwnedService = {
-  id: string;
-  name: string;
-};
-
 type ServiceSummary = {
   id: string;
   name: string;
   leadCount: number;
   subscription_status: 'inactive' | 'active' | 'past_due';
+  profileCompleteness: number;
+  missingProfileFields: string[];
 };
 
 export default function DashboardPage() {
@@ -66,6 +63,8 @@ export default function DashboardPage() {
             name: service.name || 'Ukjent tjeneste',
             leadCount: leads.length,
             subscription_status: service.subscription_status ?? 'inactive',
+            profileCompleteness: service.profile_completeness,
+            missingProfileFields: service.missing_profile_fields,
           };
         })
       );
@@ -173,6 +172,41 @@ export default function DashboardPage() {
                     Når første forespørsel kommer inn, dukker den opp her.
                   </p>
                 )}
+                <div className="mt-4 max-w-xl">
+                  <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                    <span>Profilsynlighet</span>
+                    <span>{service.profileCompleteness}%</span>
+                  </div>
+                  <div
+                    className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200"
+                    role="progressbar"
+                    aria-label={`Profilen til ${service.name} er ${service.profileCompleteness} prosent komplett`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={service.profileCompleteness}
+                  >
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-[width]"
+                      style={{ width: `${service.profileCompleteness}%` }}
+                    />
+                  </div>
+                  {service.missingProfileFields.length > 0 ? (
+                    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                      <p className="text-xs font-semibold text-slate-700">
+                        Neste grep for bedre synlighet
+                      </p>
+                      <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                        {service.missingProfileFields.slice(0, 3).map((field) => (
+                          <li key={field}>• {field}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs font-medium text-emerald-700">
+                      Profilen er komplett og klar til å bli funnet.
+                    </p>
+                  )}
+                </div>
                 {service.subscription_status !== 'active' && (
                   <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                     {ENABLE_PAYMENTS

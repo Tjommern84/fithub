@@ -1,6 +1,7 @@
 ﻿'use server';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../../../../lib/supabase.types';
 import { sendEmail, isEmailConfigured } from '../../../../lib/emailClient';
 import { providerRepliedEmail } from '../../../../lib/emailTemplates';
 import { shouldSendEmail } from '../../../../lib/notificationPreferences';
@@ -45,7 +46,7 @@ type LeadBooking = {
 } | null;
 
 const hasEmailEvent = async (
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   leadId: string,
   recipientEmail: string
 ) => {
@@ -61,7 +62,7 @@ const hasEmailEvent = async (
 };
 
 const logEmailEvent = async (
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   leadId: string,
   recipientEmail: string
 ) => {
@@ -72,7 +73,7 @@ const logEmailEvent = async (
   });
 };
 
-const getProfileById = async (supabase: SupabaseClient<any>, userId: string) => {
+const getProfileById = async (supabase: SupabaseClient<Database>, userId: string) => {
   const { data } = await supabase
     .from('profiles')
     .select('id, full_name')
@@ -145,9 +146,16 @@ export async function getLeadWithMessages(
     .eq('lead_id', leadId)
     .order('suggested_at', { ascending: true });
 
+  const typedMessages: LeadMessageRow[] = (messages ?? [])
+    .filter((message) => message.sender_role === 'provider' || message.sender_role === 'user')
+    .map((message) => ({
+      ...message,
+      sender_role: message.sender_role as LeadMessageRow['sender_role'],
+    }));
+
   return {
     lead,
-    messages: messages ?? [],
+    messages: typedMessages,
     suggestions: suggestions ?? [],
     booking: booking
       ? {

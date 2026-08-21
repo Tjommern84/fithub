@@ -16,6 +16,8 @@ import { invalidateServiceCaches } from '../../../lib/cacheInvalidation';
 import { getServiceSupabase } from '../../../lib/serviceSupabase';
 import { getUserSupabase } from '../../../lib/userSupabase';
 import { isRateLimited } from '../../../lib/rateLimit';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../../../lib/supabase.types';
 
 export type LeadActionState = {
   ok: boolean;
@@ -29,7 +31,7 @@ export type ReviewActionState = {
 
 type ReviewRow = {
   id: string;
-  lead_id: string;
+  lead_id: string | null;
   rating: number;
   comment: string;
   created_at: string;
@@ -51,7 +53,7 @@ type EmailEventType = 'lead_created' | 'provider_replied';
 const getSupabase = getUserSupabase;
 
 const hasEmailEvent = async (
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   type: EmailEventType,
   leadId: string,
   recipientEmail: string
@@ -68,7 +70,7 @@ const hasEmailEvent = async (
 };
 
 const logEmailEvent = async (
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   type: EmailEventType,
   leadId: string,
   recipientEmail: string
@@ -80,7 +82,7 @@ const logEmailEvent = async (
   });
 };
 
-const getProfileById = async (supabase: any, userId: string) => {
+const getProfileById = async (supabase: SupabaseClient<Database>, userId: string) => {
   const { data } = await supabase
     .from('profiles')
     .select('id, email, full_name')

@@ -20,7 +20,7 @@ export function isRelevantEntity(entity: BrregEnhet): boolean {
  */
 export function isRelevantNaceCode(code: string): boolean {
   // Direct match
-  if (RELEVANT_NACE_CODES.includes(code as any)) {
+  if ((RELEVANT_NACE_CODES as readonly string[]).includes(code)) {
     return true;
   }
 

@@ -52,7 +52,9 @@ export class BrregDownloader {
     const gunzip = createGunzip();
 
     // Convert Web Stream to Node stream
-    const nodeStream = Readable.fromWeb(body as any);
+    const nodeStream = Readable.fromWeb(
+      body as unknown as import('node:stream/web').ReadableStream<Uint8Array>,
+    );
 
     // Track progress
     nodeStream.on('data', (chunk) => {

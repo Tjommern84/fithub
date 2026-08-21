@@ -22,3 +22,5 @@ Ved en stopp på endringsgrensen:
 3. Juster grensen midlertidig og kjør workflowen manuelt, eller kjør `npm run anlegg:sync` fra et kontrollert miljø.
 
 Lokal skrivebeskyttet kontroll: `npm run anlegg:sync:plan`.
+
+Første verifiserte produksjonskjøring fullførte uten feil med 5 041 uendrede anlegg og ingen opprettelser, oppdateringer eller deaktiveringer. Dette er referansepunktet for senere kjøringer; større avvik skal undersøkes før de godkjennes.

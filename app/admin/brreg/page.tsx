@@ -92,7 +92,11 @@ export default async function BrregAdminPage({
     query = query.eq('verified', false);
   }
 
-  const { data: entities, count, error } = await query as { data: BrregEntity[] | null; count: number | null; error: any };
+  const { data: entities, count, error } = await query as {
+    data: BrregEntity[] | null;
+    count: number | null;
+    error: { message: string } | null;
+  };
 
   if (error) {
     return <div>Error loading data: {error.message}</div>;

@@ -8,11 +8,16 @@ import { logError } from '../../lib/errorLogger';
 import { wrapServerAction } from '../../lib/actionWrapper';
 import { AvailabilitySlot } from '../../lib/booking';
 import { getUserSupabase } from '../../lib/userSupabase';
+import type { CoverageRule } from '../../lib/domain';
+import type { Database } from '../../lib/supabase.types';
+import { getProfileCompleteness } from '../../lib/profileCompleteness';
 
 type OwnedService = {
   id: string;
   name: string;
   subscription_status?: 'inactive' | 'active' | 'past_due';
+  profile_completeness: number;
+  missing_profile_fields: string[];
 };
 
 type LeadRow = {
@@ -59,11 +64,39 @@ export async function getOwnedServices(accessToken: string): Promise<OwnedServic
 
   const { data } = await supabase
     .from('services')
-    .select('id, name, subscription_status')
+    .select(
+      'id, name, subscription_status, description, cover_image_url, logo_image_url, address, website, phone, email, tags, goals, venues'
+    )
     .eq('owner_user_id', userData.user.id)
     .order('name');
 
-  return data ?? [];
+  return (data ?? []).map((service) => {
+    const completeness = getProfileCompleteness({
+      description: service.description,
+      coverImageUrl: service.cover_image_url,
+      logoImageUrl: service.logo_image_url,
+      address: service.address,
+      website: service.website,
+      phone: service.phone,
+      email: service.email,
+      tags: service.tags,
+      goals: service.goals,
+      venues: service.venues,
+    });
+
+    return {
+      id: service.id,
+      name: service.name,
+      subscription_status:
+        service.subscription_status === 'active' ||
+        service.subscription_status === 'inactive' ||
+        service.subscription_status === 'past_due'
+          ? service.subscription_status
+          : undefined,
+      profile_completeness: completeness.percentage,
+      missing_profile_fields: completeness.missing,
+    };
+  });
 }
 
 export async function getOwnedService(
@@ -139,14 +172,6 @@ export async function updateServiceProfile(
   }
 
   const coverageType = String(formData.get('coverage_type') ?? '');
-  type CoverageRule =
-    | {
-        type: 'radius';
-        center: { lat: number; lon: number };
-        radius_km: number;
-      }
-    | { type: 'cities'; cities: string[] }
-    | { type: 'region'; region: 'norway' | 'nordic' };
   let coverage: CoverageRule[] = [];
 
   if (coverageType === 'radius') {
@@ -228,7 +253,9 @@ export async function updateServiceProfile(
   const serviceClient = getServiceSupabase();
   if (serviceClient) {
     await serviceClient.from('service_coverage').delete().eq('service_id', serviceId);
-    const coverageRows: any[] = (coverage as any[]).flatMap((rule: any) => {
+    const coverageRows = coverage.flatMap<
+      Database['public']['Tables']['service_coverage']['Insert']
+    >((rule) => {
       if (rule.type === 'radius') {
         return [
           {
@@ -257,7 +284,7 @@ export async function updateServiceProfile(
       ];
     });
   if (coverageRows.length > 0) {
-    await serviceClient.from('service_coverage').insert(coverageRows as any);
+    await serviceClient.from('service_coverage').insert(coverageRows);
   }
 }
 
@@ -333,9 +360,9 @@ export async function getAvailability(serviceId: string): Promise<AvailabilitySl
     .select('weekday, start_time, end_time')
     .eq('service_id', serviceId)
     .order('weekday', { ascending: true })
-    .order('start_time', { ascending: true }) as { data: any[] | null };
+    .order('start_time', { ascending: true });
   if (!Array.isArray(data)) return [];
-  return data.map((row: any) => ({
+  return data.map((row) => ({
     weekday: Number(row.weekday ?? 0),
     start_time: String(row.start_time ?? ''),
     end_time: String(row.end_time ?? ''),

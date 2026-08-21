@@ -88,7 +88,7 @@ function AdminVerifyContent() {
         return;
       }
 
-      const { data: factorsData, error } = await (supabase.auth.mfa as any).listFactors();
+      const { data: factorsData, error } = await supabase.auth.mfa.listFactors();
       if (error) {
         setStatus('error');
         setMessage('Kunne ikke hente MFA-faktorer.');
@@ -130,7 +130,7 @@ function AdminVerifyContent() {
 
     let currentChallengeId = challengeId;
     if (!currentChallengeId) {
-      const { data: challengeData, error: challengeError } = await (supabase.auth.mfa as any).challenge(
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge(
         { factorId: factor.id }
       );
       if (challengeError || !challengeData?.id) {
@@ -142,7 +142,7 @@ function AdminVerifyContent() {
       setChallengeId(currentChallengeId);
     }
 
-    const { data, error } = await (supabase.auth.mfa as any).verify({
+    const { data, error } = await supabase.auth.mfa.verify({
       factorId: factor.id,
       challengeId: currentChallengeId,
       code: code.trim(),
@@ -175,7 +175,7 @@ function AdminVerifyContent() {
     setStatus('enrolling');
     setMessage('');
 
-    const { data, error } = await (supabase.auth.mfa as any).enroll({
+    const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
       friendlyName: 'FitHub Admin',
     });
@@ -189,7 +189,7 @@ function AdminVerifyContent() {
     setFactor({
       id: data.id,
       factor_type: 'totp',
-      status: data.status ?? 'unverified',
+      status: 'unverified',
       friendly_name: data.friendly_name ?? 'FitHub Admin',
     });
     setEnrollment({

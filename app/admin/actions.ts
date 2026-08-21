@@ -1,6 +1,6 @@
 ﻿'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getConsentMetrics } from '../../lib/consents';
 import { ENABLE_ADMIN, ENABLE_EMAILS } from '../../lib/featureFlags';
 import { sendEmail, isEmailConfigured } from '../../lib/emailClient';
@@ -9,6 +9,7 @@ import { logError } from '../../lib/errorLogger';
 import { invalidateServiceCaches } from '../../lib/cacheInvalidation';
 import { getAdminAccess, isAdminSession, type AdminAccessResult } from '../../lib/adminHelper';
 import crypto from 'crypto';
+import type { Database } from '../../lib/supabase.types';
 
 export type AdminServiceOverview = {
   id: string;
@@ -109,7 +110,7 @@ const getSupabase = (accessToken?: string) => {
     return null;
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
     global: accessToken
       ? {
           headers: {
@@ -128,7 +129,7 @@ const getServiceSupabase = () => {
     return null;
   }
 
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -286,7 +287,7 @@ export async function toggleServiceActive(
 }
 
 const countEvents = async (
-  adminClient: any,
+  adminClient: SupabaseClient<Database>,
   type: string,
   since: string
 ) => {
@@ -617,8 +618,8 @@ const buildInviteLink = (token: string) => {
 };
 
 const createInviteRecord = async (
-  adminClient: any,
-  params: { email: string; serviceId?: string | null; createdBy?: string | null }
+  adminClient: SupabaseClient<Database>,
+  params: { email: string; serviceId: string; createdBy?: string | null }
 ) => {
   const token = createInviteToken();
   const { data, error } = await adminClient
@@ -626,9 +627,9 @@ const createInviteRecord = async (
     .insert({
       email: params.email,
       token,
-      service_id: params.serviceId ?? null,
+      service_id: params.serviceId,
       created_by: params.createdBy ?? null,
-    } as any)
+    })
     .select('id, email, token, service_id, created_at, accepted_at')
     .single();
 
@@ -663,15 +664,17 @@ export async function createProviderInvite(
     return { ok: false, message: 'E-post mangler.' };
   }
 
-  if (serviceId) {
-    const { data: service } = await adminClient
-      .from('services')
-      .select('id')
-      .eq('id', serviceId)
-      .maybeSingle();
-    if (!service) {
-      return { ok: false, message: 'Fant ikke tjenesten.' };
-    }
+  if (!serviceId) {
+    return { ok: false, message: 'Tjeneste-ID mangler.' };
+  }
+
+  const { data: service } = await adminClient
+    .from('services')
+    .select('id')
+    .eq('id', serviceId)
+    .maybeSingle();
+  if (!service) {
+    return { ok: false, message: 'Fant ikke tjenesten.' };
   }
 
   const { data: userData } = await adminClient.auth.getUser(accessToken);
@@ -679,7 +682,7 @@ export async function createProviderInvite(
 
   const created = await createInviteRecord(adminClient, {
     email: cleanEmail,
-    serviceId: serviceId ?? null,
+    serviceId,
     createdBy,
   });
 
@@ -779,21 +782,24 @@ export async function bulkInviteProviders(
       continue;
     }
 
-    if (serviceId) {
-      const { data: service } = await adminClient
-        .from('services')
-        .select('id')
-        .eq('id', serviceId)
-        .maybeSingle();
-      if (!service) {
-        results.push({ line, ok: false, message: 'Ugyldig service_id.' });
-        continue;
-      }
+    if (!serviceId) {
+      results.push({ line, ok: false, message: 'Manglende service_id.' });
+      continue;
+    }
+
+    const { data: service } = await adminClient
+      .from('services')
+      .select('id')
+      .eq('id', serviceId)
+      .maybeSingle();
+    if (!service) {
+      results.push({ line, ok: false, message: 'Ugyldig service_id.' });
+      continue;
     }
 
     const created = await createInviteRecord(adminClient, {
       email: email.toLowerCase(),
-      serviceId: serviceId || null,
+      serviceId,
       createdBy,
     });
 

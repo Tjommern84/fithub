@@ -59,7 +59,7 @@ export const updateUserPreferencesFromSearch = wrapServerAction(
       last_budget: budget,
       last_venue: venue,
       updated_at: new Date().toISOString(),
-    } as any);
+    });
 
     if (error) {
       await logError({

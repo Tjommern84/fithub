@@ -36,7 +36,7 @@ const logQualityEvent = async (payload: {
     booking_id: payload.bookingId,
     type: payload.type,
     user_id: payload.userId,
-  } as any);
+  });
 
   if (error) {
     await logError({
@@ -84,11 +84,18 @@ export async function getMyBookings(accessToken: string) {
 
   const normalize = (rows: typeof customerRows): BookingItem[] => {
     if (!Array.isArray(rows)) return [];
-    return rows.map((row: any) => ({
+    return rows.map((value) => {
+      const row = value as unknown as Record<string, unknown>;
+      const serviceValue = Array.isArray(row.service) ? row.service[0] : row.service;
+      const service =
+        serviceValue && typeof serviceValue === 'object'
+          ? (serviceValue as Record<string, unknown>)
+          : null;
+      return {
       id: String(row.id ?? ''),
       lead_id: String(row.lead_id ?? ''),
       service_id: String(row.service_id ?? ''),
-      service_name: row.service?.name ?? null,
+      service_name: typeof service?.name === 'string' ? service.name : null,
       user_id: String(row.user_id ?? ''),
       scheduled_at: String(row.scheduled_at ?? ''),
       status: (row.status as BookingStatus) ?? 'proposed',
@@ -99,7 +106,8 @@ export async function getMyBookings(accessToken: string) {
       no_show_marked: Boolean(row.no_show_marked),
       no_show_marked_at: row.no_show_marked_at ?? null,
       created_at: String(row.created_at ?? ''),
-    }));
+      } as BookingItem;
+    });
   };
 
   return {

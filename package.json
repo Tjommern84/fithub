@@ -100,6 +100,7 @@
     "anlegg:sync:guard": "tsx scripts/import-anleggsregisteret.ts --plan --max-create=250 --max-update=1000 --max-deactivate=50",
     "anlegg:sync:plan": "tsx scripts/import-anleggsregisteret.ts --plan",
     "anlegg:sync:dry": "tsx scripts/import-anleggsregisteret.ts --dry-run",
+    "db:types": "node scripts/generate-supabase-types.mjs",
     "feel24:fetch": "tsx scripts/fetch-feel24.ts",
     "feel24:fetch:dry": "tsx scripts/fetch-feel24.ts --dry-run",
     "sporty:fetch": "tsx scripts/fetch-sporty.ts",

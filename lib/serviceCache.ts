@@ -1,5 +1,6 @@
 import { getServiceSupabase } from './serviceSupabase';
 import type { Service } from './domain';
+import type { Json } from './supabase.types';
 
 const cacheClient = getServiceSupabase();
 
@@ -25,7 +26,7 @@ export async function setServiceCache(serviceId: string, payload: Service): Prom
   try {
     await cacheClient.from('service_cache').upsert({
       service_id: serviceId,
-      payload,
+      payload: payload as unknown as Json,
       updated_at: new Date().toISOString(),
     });
   } catch {
