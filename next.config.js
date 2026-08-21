@@ -31,7 +31,6 @@ module.exports = withSentryConfig(nextConfig, {
   authToken: process.env.SENTRY_AUTH_TOKEN,
   hideSourceMaps: true,
   widenClientFileUpload: false,
-  tunnelRoute: '/monitoring',
   webpack: {
     automaticVercelMonitors: false,
     treeshake: {
