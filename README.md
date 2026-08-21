@@ -10,7 +10,7 @@ Norwegian marketplace matching users with gyms, PTs, sports clubs and classes �
 
 | Layer | Tech |
 |-------|------|
-| Frontend | Next.js 14 App Router · React 18 · TypeScript · Tailwind CSS |
+| Frontend | Next.js 16 App Router · React 19 · TypeScript · Tailwind CSS |
 | Database | Supabase (PostgreSQL + PostGIS) |
 | Auth | Supabase Auth (magic link) |
 | Geocoding | Nominatim (OpenStreetMap) |
@@ -72,6 +72,9 @@ ADMIN_USER_ID=               # optional bootstrap override
 SERPER_API_KEY=              # data import
 RESEND_API_KEY=              # transactional email
 NEXT_PUBLIC_SENTRY_DSN=      # error tracking
+SENTRY_ORG=                  # Sentry organization slug
+SENTRY_PROJECT=              # Sentry project slug
+SENTRY_AUTH_TOKEN=           # secret, source-map upload only
 ```
 
 Admin access uses `admin_users` plus Supabase TOTP MFA (`aal2`). Run
@@ -82,6 +85,26 @@ using `/admin`.
 ### Migrations
 
 Run `sql/00_schema.sql` through `sql/20_function_search_path.sql` in order via Supabase SQL editor. The remaining loose `.sql` files are legacy — ignore.
+
+Regenerate the checked-in database types after schema changes:
+
+```bash
+npm run db:types
+```
+
+The command reads the local Supabase variables and never writes to the database.
+
+### Quality checks
+
+```bash
+npm run lint
+npm run typecheck
+npm run test:unit
+npm run build
+npm run test:production
+```
+
+CI also exercises authenticated `/dashboard` and `/min-side` flows with a dedicated read-only smoke user. See [authenticated smoke tests](docs/operations/authenticated-smoke-tests.md), [Anleggsregisteret sync](docs/operations/anleggsregisteret-sync.md) and [Sentry production setup](docs/operations/sentry.md).
 
 ---
 
@@ -124,5 +147,5 @@ lib/
   matching.ts           # cityCoordinates, normalizeCity()
   domain.ts             # TypeScript types
 scripts/                # One-off and recurring data import scripts
-sql/                    # Database migrations (00–15)
+sql/                    # Database migrations (00–20)
 ```

@@ -1,8 +1,9 @@
 'use server';
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { sendEmail, isEmailConfigured } from '../../lib/emailClient';
 import { feedbackNotificationEmail } from '../../lib/emailTemplates';
+import type { Database } from '../../lib/supabase.types';
 
 const getSupabase = (accessToken?: string) => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -12,7 +13,7 @@ const getSupabase = (accessToken?: string) => {
     return null;
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
     global: accessToken
       ? {
           headers: {
@@ -25,7 +26,11 @@ const getSupabase = (accessToken?: string) => {
 
 const getAdminEmail = () => process.env.ADMIN_EMAIL?.toLowerCase() ?? '';
 
-const getRoleForUser = async (supabase: any, userId: string, email?: string) => {
+const getRoleForUser = async (
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  email?: string,
+) => {
   const adminEmail = getAdminEmail();
   if (email && adminEmail && email.toLowerCase() === adminEmail) {
     return 'admin' as const;

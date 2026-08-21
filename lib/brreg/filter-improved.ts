@@ -112,7 +112,7 @@ export function isRelevantEntity(entity: BrregEnhet): boolean {
  * Check if a NACE code matches our relevant codes
  */
 export function isRelevantNaceCode(code: string): boolean {
-  if (RELEVANT_NACE_CODES.includes(code as any)) {
+  if ((RELEVANT_NACE_CODES as readonly string[]).includes(code)) {
     return true;
   }
 

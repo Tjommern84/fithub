@@ -1,7 +1,8 @@
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
+import type { Database } from './supabase.types';
 
 export type AuthenticatedSupabase = {
-  supabase: SupabaseClient<any>;
+  supabase: SupabaseClient<Database>;
   user: User;
 };
 
@@ -12,13 +13,13 @@ export type AuthenticatedSupabase = {
  * JWT so Postgres RLS evaluates `auth.uid()` for that user. Calling
  * `auth.getUser(accessToken)` alone does not attach the token to later queries.
  */
-export function getUserSupabase(accessToken?: string): SupabaseClient<any> | null {
+export function getUserSupabase(accessToken?: string): SupabaseClient<Database> | null {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) return null;
 
-  return createClient(supabaseUrl, supabaseAnonKey, {
+  return createClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

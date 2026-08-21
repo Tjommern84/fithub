@@ -2,6 +2,8 @@
 
 import { getServiceSupabase } from './serviceSupabase';
 import { getUserSupabase } from './userSupabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from './supabase.types';
 
 export type NotificationPreferences = {
   email_lead_created: boolean;
@@ -17,7 +19,7 @@ export type EmailEventType =
   | 'booking_cancelled';
 
 const ensurePreferenceRow = async (
-  supabase: any,
+  supabase: SupabaseClient<Database>,
   userId: string
 ) => {
   const { data } = await supabase
@@ -34,7 +36,7 @@ const ensurePreferenceRow = async (
 
   const { data: inserted } = await supabase
     .from('notification_preferences')
-    .insert({ user_id: userId } as any)
+    .insert({ user_id: userId })
     .select(
       'email_lead_created, email_provider_replied, email_booking_confirmed, email_booking_cancelled'
     )
