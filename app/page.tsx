@@ -33,12 +33,12 @@ const websiteLd = {
 
 export default function HomePage() {
   return (
-    <main className="bg-brand-beige">
+    <div className="bg-brand-beige">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }} />
       <HomeHero />
       <HomeValueProps id="hvordan-funker-det" />
-      <HomeDestinations />
       <CategoryGrid />
-    </main>
+      <HomeDestinations />
+    </div>
   );
 }

@@ -37,18 +37,20 @@ const VALUE_PROPS = [
 
 export default function HomeValueProps({ id }: { id?: string }) {
   return (
-    <section id={id} className="bg-white py-16">
+    <section id={id} className="bg-white pb-14 pt-28 sm:pb-16 sm:pt-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="grid gap-10 sm:grid-cols-3">
+        <div className="grid gap-7 sm:grid-cols-3 sm:gap-10">
           {VALUE_PROPS.map((item) => (
-            <div key={item.title} className="text-center sm:text-left">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-cream text-brand-copper sm:mx-0">
+            <div key={item.title} className="flex items-start gap-4 text-left sm:block">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-cream text-brand-copper">
                 {item.icon}
               </div>
-              <h3 className="mt-4 font-heading text-lg font-bold text-brand-forest">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-sm text-slate-600">{item.description}</p>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-brand-forest sm:mt-4">
+                  {item.title}
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-600 sm:mt-2">{item.description}</p>
+              </div>
             </div>
           ))}
         </div>
