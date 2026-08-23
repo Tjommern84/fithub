@@ -88,14 +88,12 @@ function CategoryCard({
   disabled,
   onClick,
   className = '',
-  priority = false,
 }: {
   config: CardConfig;
   selected: boolean;
   disabled: boolean;
   onClick: () => void;
   className?: string;
-  priority?: boolean;
 }) {
   const [imgIdx, setImgIdx] = useState(0);
   const [prevIdx, setPrevIdx] = useState<number | null>(null);
@@ -150,7 +148,7 @@ function CategoryCard({
           src={config.images[prevIdx]}
           alt=""
           fill
-          sizes="(max-width: 640px) 50vw, 576px"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 288px"
           className="object-cover will-change-[opacity,transform] group-hover:scale-105"
           style={{ transition: 'opacity 0.4s ease, transform 0.7s ease', opacity: 0 }}
         />
@@ -159,17 +157,16 @@ function CategoryCard({
         src={config.images[imgIdx]}
         alt=""
         fill
-        sizes="(max-width: 640px) 50vw, 576px"
+        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 288px"
         className="object-cover will-change-[opacity,transform] group-hover:scale-105"
         style={{ transition: 'opacity 0.4s ease, transform 0.7s ease', opacity: 1 }}
-        priority={priority && imgIdx === 0}
       />
       {/* Gradient overlays */}
       <div className={`absolute inset-0 bg-gradient-to-br ${accent.gradient}`} />
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
 
       {/* Content */}
-      <div className="relative z-card flex h-full flex-col justify-between p-5">
+      <div className="relative z-card flex h-full flex-col justify-between p-4 sm:p-5">
         <div className="flex flex-wrap gap-1.5">
           {config.tags.slice(0, 3).map((t) => (
             <span
@@ -190,7 +187,7 @@ function CategoryCard({
           <h2 className="font-heading text-lg font-bold leading-tight text-white sm:text-xl">
             {config.label}
           </h2>
-          <p className="mt-1 line-clamp-1 text-sm font-light text-white/85">
+          <p className="mt-1 line-clamp-2 text-xs font-light leading-relaxed text-white/85 sm:text-sm">
             {config.description}
           </p>
         </div>
@@ -243,25 +240,28 @@ export default function CategoryGrid() {
   }, [location, doNavigate]);
 
   return (
-    <section>
+    <section className="bg-brand-beige">
 
       {/* ── Page content ─────────────────────────────────────────────── */}
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
 
         {/* Heading */}
-        <div className="mb-6">
-          <h2 className="font-heading text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
-            Finn lokale treningsmuligheter
+        <div className="mb-7 sm:mb-9">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-copper">
+            Utforsk tilbud
+          </p>
+          <h2 className="mt-2 font-heading text-3xl font-extrabold tracking-tight text-brand-forest sm:text-4xl">
+            Finn noe som passer deg
           </h2>
           <p className="mt-2 max-w-xl text-base font-light text-slate-500">
             {location
-              ? `Viser tilbud nær ${firstPart(location.label)}`
+              ? `Aktiviteter, trening og tilbud nær ${firstPart(location.label)}`
               : 'Sett lokasjon i toppen for å låse opp kategoriene'}
           </p>
         </div>
 
         {/* ── Category grid ─────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
           {[...CATEGORIES, TUR_TILE].map((cat, idx, all) => (
             <CategoryCard
               key={cat.key}
@@ -269,19 +269,18 @@ export default function CategoryGrid() {
               selected={false}
               disabled={cat.key === 'tur' ? false : !location}
               onClick={() => (cat.key === 'tur' ? router.push('/tur') : handleCardClick(cat.key))}
-              priority={idx < 4}
               className={[
-                'h-56 sm:h-64 lg:h-72',
+                'h-52 sm:h-60 lg:h-64',
                 idx === all.length - 1 && all.length % 2 !== 0
-                  ? 'col-span-2'
+                  ? 'col-span-2 lg:col-span-1'
                   : '',
               ].filter(Boolean).join(' ')}
             />
           ))}
         </div>
 
-        <p className="mx-auto mt-8 max-w-xl text-center text-sm font-light leading-relaxed text-slate-400">
-          Velg lokasjon, velg kategori og filtrer. Ingen generiske treff.
+        <p className="mx-auto mt-8 max-w-xl text-center text-sm font-light leading-relaxed text-slate-500">
+          Velg en kategori for å se aktiviteter og tilbydere nær deg.
         </p>
       </div>
     </section>

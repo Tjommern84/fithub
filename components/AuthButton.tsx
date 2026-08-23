@@ -11,12 +11,16 @@ type AuthButtonProps = {
   ctaLabel?: string;
   ctaVariant?: ButtonVariant;
   textSizeClassName?: string;
+  loginClassName?: string;
+  ctaClassName?: string;
 };
 
 export default function AuthButton({
   ctaLabel = 'Bli medlem',
   ctaVariant = 'brand',
   textSizeClassName = '!text-2xl',
+  loginClassName = '',
+  ctaClassName = '',
 }: AuthButtonProps = {}) {
   const [session, setSession] = useState<Session | null>(null);
   const [email, setEmail] = useState('');
@@ -56,13 +60,14 @@ export default function AuthButton({
           setStatus('idle');
           setError('');
         }}
-        className="text-sm font-medium text-white/70 transition hover:text-white"
+        className={`text-sm font-medium text-white/70 transition hover:text-white ${loginClassName}`.trim()}
       >
         Logg inn
       </button>
       <Button
         type="button"
         variant={ctaVariant}
+        className={ctaClassName}
         onClick={() => {
           setShowForm(true);
           setStatus('idle');
@@ -136,5 +141,4 @@ export default function AuthButton({
     </div>
   );
 }
-
 

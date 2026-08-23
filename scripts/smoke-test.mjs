@@ -88,22 +88,20 @@ async function main() {
     checks.homeStatus = response?.status();
     checks.homeTitle = await page.title();
     checks.homeHeading = await page.getByRole('heading', { level: 1 }).innerText();
-    const defaultLocation = page.getByRole('button', { name: 'Oslo', exact: true });
+    const activitySearch = page.getByPlaceholder('Aktivitet, sted eller tilbyder');
+    const locationButton = page.getByRole('button', { name: 'Bruk min posisjon', exact: true });
+    const defaultLocation = locationButton.getByText('Oslo', { exact: true });
+    await activitySearch.waitFor({ state: 'visible', timeout: 10_000 });
     await defaultLocation.waitFor({ state: 'visible', timeout: 10_000 });
     checks.defaultLocation = await defaultLocation.innerText();
 
     assert(checks.homeStatus === 200, `Forsiden svarte ${checks.homeStatus}`);
     assert(checks.defaultLocation === 'Oslo', 'Standardlokasjonen ble ikke lastet');
 
-    await defaultLocation.click();
-    const locationInput = page.getByPlaceholder('Adresse, sted eller postnummer…');
-    await locationInput.waitFor({ state: 'visible', timeout: 5_000 });
-    checks.locationInput = await locationInput.isVisible();
-
-    const smartSearchToggle = page.getByLabel('Smart søk', { exact: true });
-    assert((await smartSearchToggle.count()) === 1, 'Fant ikke ett entydig Smart søk-valg');
-    await smartSearchToggle.check();
-    await page.getByPlaceholder('Søk på navn, sted eller type…').fill('styrke');
+    assert((await locationButton.count()) === 1, 'Fant ikke ett entydig posisjonsvalg');
+    assert((await page.getByLabel('Velg aktivitetstype', { exact: true }).count()) === 1,
+      'Fant ikke kategorivelgeren');
+    await activitySearch.fill('styrke');
     await page.getByRole('button', { name: 'Søk', exact: true }).click();
     await page.waitForURL(/\/resultater\?q=styrke/, { timeout: 15_000 });
 

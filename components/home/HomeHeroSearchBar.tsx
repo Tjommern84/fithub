@@ -16,8 +16,6 @@ export default function HomeHeroSearchBar() {
   const [cat, setCat] = useState('');
   const [geoLoading, setGeoLoading] = useState(false);
 
-  // Enkel, frittstående geolocation — IKKE full adresse-geokoding/forslagsliste.
-  // Det er allerede SearchLocationBar (toppmeny) sin jobb; duplisert ikke her.
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) return;
     setGeoLoading(true);
@@ -34,12 +32,12 @@ export default function HomeHeroSearchBar() {
         setGeoLoading(false);
       },
       () => setGeoLoading(false),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
     );
   };
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
     const params = new URLSearchParams();
     const q = query.trim();
     if (q) params.set('q', q);
@@ -57,56 +55,79 @@ export default function HomeHeroSearchBar() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-1 rounded-[24px] bg-white p-2 shadow-2xl sm:flex-row sm:items-center sm:gap-0 sm:divide-x sm:divide-slate-200"
+      aria-label="Finn aktiviteter"
+      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_52px] gap-1.5 rounded-[22px] border border-white/70 bg-white/95 p-2 shadow-[0_24px_70px_rgba(10,26,14,0.24)] backdrop-blur sm:grid-cols-[minmax(0,1.65fr)_minmax(170px,0.75fr)_minmax(180px,0.8fr)_56px] sm:items-stretch sm:gap-0 sm:divide-x sm:divide-slate-200 sm:rounded-[26px] sm:p-2.5"
     >
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Søk aktivitet, sted eller tilbyder"
-        className="min-w-0 flex-1 rounded-xl bg-transparent px-4 py-3 text-sm text-slate-900 outline-none placeholder:text-slate-400 sm:rounded-none"
-      />
+      <label className="col-span-3 flex min-w-0 items-center gap-3 rounded-2xl px-3 py-2.5 transition focus-within:bg-brand-cream/60 sm:col-span-1 sm:rounded-none sm:px-4 sm:py-3">
+        <svg className="h-5 w-5 shrink-0 text-brand-forest/55" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path strokeLinecap="round" d="m20 20-3.7-3.7" />
+        </svg>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            Hva ser du etter?
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Aktivitet, sted eller tilbyder"
+            className="mt-0.5 w-full bg-transparent text-sm font-medium text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+          />
+        </span>
+      </label>
 
       <button
         type="button"
         onClick={handleUseMyLocation}
         disabled={geoLoading}
-        className="shrink-0 px-4 py-3 text-left text-sm text-slate-700 transition hover:text-brand-forest disabled:opacity-60"
+        className="flex min-w-0 items-center gap-2 rounded-2xl px-3 py-2.5 text-left transition hover:bg-brand-cream/60 disabled:opacity-60 sm:rounded-none sm:px-4 sm:py-3"
+        aria-label="Bruk min posisjon"
       >
-        📍 {geoLoading ? 'Henter…' : location ? firstPart(location.label) : 'Velg posisjon'}
+        <svg className="h-5 w-5 shrink-0 text-brand-copper" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+          <circle cx="12" cy="10" r="2.5" />
+        </svg>
+        <span className="min-w-0">
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Sted</span>
+          <span className="block truncate text-sm font-medium text-slate-800">
+            {geoLoading ? 'Henter…' : location ? firstPart(location.label) : 'Min posisjon'}
+          </span>
+        </span>
       </button>
 
-      <select
-        value={cat}
-        onChange={(e) => setCat(e.target.value)}
-        aria-label="Velg aktivitetstype"
-        className="shrink-0 bg-transparent px-4 py-3 text-sm text-slate-700 outline-none"
-      >
-        <option value="">Alle aktiviteter</option>
-        {CATEGORIES.map((c) => (
-          <option key={c.key} value={c.key}>
-            {c.label}
-          </option>
-        ))}
-      </select>
-
-      {/* TODO (fremtidig fase): bevisst dekorativ/ikke-funksjonell denne runden —
-          search_services() har ingen dato-/tidsfiltrering ennå. */}
-      <span
-        className="shrink-0 px-4 py-3 text-sm text-slate-400"
-        title="Kommer i en fremtidig versjon"
-      >
-        🕐 Når som helst
-      </span>
+      <label className="flex min-w-0 items-center gap-2 rounded-2xl px-3 py-2.5 transition hover:bg-brand-cream/60 sm:rounded-none sm:px-4 sm:py-3">
+        <svg className="h-5 w-5 shrink-0 text-brand-copper" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
+          <circle cx="8" cy="8" r="3" />
+          <circle cx="17" cy="9" r="2.5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 20c0-3 2.5-5 5-5s5 2 5 5m1.5 0c0-2.2 1.4-4 3.5-4.5" />
+        </svg>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">Kategori</span>
+          <select
+            value={cat}
+            onChange={(event) => setCat(event.target.value)}
+            aria-label="Velg aktivitetstype"
+            className="block w-full cursor-pointer appearance-none bg-transparent text-sm font-medium text-slate-800 outline-none"
+          >
+            <option value="">Alle aktiviteter</option>
+            {CATEGORIES.map((category) => (
+              <option key={category.key} value={category.key}>
+                {category.label}
+              </option>
+            ))}
+          </select>
+        </span>
+      </label>
 
       <button
         type="submit"
         aria-label="Søk"
-        className="flex h-12 w-12 shrink-0 items-center justify-center self-end rounded-full bg-brand-copper text-white transition hover:bg-brand-copperHover sm:self-center"
+        className="flex h-12 w-12 shrink-0 items-center justify-center self-center justify-self-end rounded-full bg-brand-copper text-white shadow-sm transition hover:bg-brand-copperHover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-copper focus-visible:ring-offset-2 sm:h-14 sm:w-14"
       >
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
-          <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
+          <path strokeLinecap="round" d="m20 20-3.7-3.7" />
         </svg>
       </button>
     </form>
