@@ -2,10 +2,37 @@ const ORS_BASE = 'https://api.openrouteservice.org';
 
 export type OrsProfile = 'foot-walking' | 'cycling-regular' | 'driving-car';
 
+export type OrsFailureReason =
+  | 'missing-key'
+  | 'authentication'
+  | 'rate-limit'
+  | 'timeout'
+  | 'network'
+  | 'upstream';
+
+export class OrsRouteError extends Error {
+  constructor(
+    public readonly reason: OrsFailureReason,
+    message: string,
+    public readonly upstreamStatus?: number,
+  ) {
+    super(message);
+    this.name = 'OrsRouteError';
+  }
+}
+
 function getKey(): string {
-  const key = process.env.ORS_API_KEY;
-  if (!key) throw new Error('ORS_API_KEY mangler i .env.local');
+  const key = process.env.ORS_API_KEY?.trim();
+  if (!key) {
+    throw new OrsRouteError('missing-key', 'ORS_API_KEY mangler');
+  }
   return key;
+}
+
+function failureReasonForStatus(status: number): OrsFailureReason {
+  if (status === 401 || status === 403) return 'authentication';
+  if (status === 429) return 'rate-limit';
+  return 'upstream';
 }
 
 export type WalkingRoute = {
@@ -36,8 +63,11 @@ export async function getRoute(
     });
 
     if (!res.ok) {
-      console.error(`[ORS] directions feil: HTTP ${res.status}`);
-      return null;
+      throw new OrsRouteError(
+        failureReasonForStatus(res.status),
+        `OpenRouteService svarte HTTP ${res.status}`,
+        res.status,
+      );
     }
 
     const data = await res.json() as {
@@ -64,8 +94,15 @@ export async function getRoute(
       coordinates:   feature.geometry.coordinates,       // [lon, lat][]
     };
   } catch (e) {
-    console.error(`[ORS] getRoute(${profile}) feil:`, (e as Error).message);
-    return null;
+    if (e instanceof OrsRouteError) {
+      console.error(`[ORS] getRoute(${profile}) feil:`, e.message);
+      throw e;
+    }
+
+    const error = e as Error;
+    const reason: OrsFailureReason = error.name === 'TimeoutError' ? 'timeout' : 'network';
+    console.error(`[ORS] getRoute(${profile}) feil:`, error.message);
+    throw new OrsRouteError(reason, error.message);
   }
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabaseClient';
-import { getRoute } from '../../../lib/orsClient';
+import { getRoute, OrsRouteError } from '../../../lib/orsClient';
 import { getClientIp, isRateLimited } from '../../../lib/rateLimit';
 import { parseRouteRequest } from '../../../lib/routeRequest';
 
@@ -49,7 +49,49 @@ export async function GET(request: Request) {
     destLon = destination.lon;
   }
 
-  const route = await getRoute(userLat, userLon, destLat, destLon, profile);
+  let route;
+  try {
+    route = await getRoute(userLat, userLon, destLat, destLon, profile);
+  } catch (error) {
+    if (!(error instanceof OrsRouteError)) {
+      console.error('[route] Ukjent feil fra rutemotoren:', error);
+      return NextResponse.json(
+        { error: 'Rutemotoren er midlertidig utilgjengelig' },
+        { status: 502 },
+      );
+    }
+
+    if (error.reason === 'missing-key') {
+      return NextResponse.json(
+        { error: 'Rutemotoren er ikke konfigurert' },
+        { status: 503 },
+      );
+    }
+    if (error.reason === 'authentication') {
+      return NextResponse.json(
+        { error: 'Rutemotorens API-nøkkel ble avvist' },
+        { status: 502 },
+      );
+    }
+    if (error.reason === 'rate-limit') {
+      return NextResponse.json(
+        { error: 'Rutemotorens kapasitet er midlertidig brukt opp' },
+        { status: 503 },
+      );
+    }
+    if (error.reason === 'timeout') {
+      return NextResponse.json(
+        { error: 'Rutemotoren brukte for lang tid' },
+        { status: 504 },
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Rutemotoren er midlertidig utilgjengelig' },
+      { status: 502 },
+    );
+  }
+
   if (!route) {
     return NextResponse.json(
       { error: 'Fant ingen rute mellom startpunktet og turmålet' },
