@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-export type DestinationType = 'peak' | 'lake' | 'viewpoint' | 'shelter' | 'hut';
+export type DestinationType = 'peak' | 'lake' | 'viewpoint' | 'shelter' | 'hut' | 'parking';
 
 export type Destination = {
   id: string;
@@ -9,6 +9,10 @@ export type Destination = {
   elevationM: number | null;
   lat: number;
   lon: number;
+};
+
+export type RouteDestination = Destination & {
+  routeByCoordinates?: boolean;
 };
 
 export type DestinationWithDistance = Destination & {

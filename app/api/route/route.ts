@@ -1,38 +1,60 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabaseClient';
-import { getRoute, type OrsProfile } from '../../../lib/orsClient';
+import { getRoute } from '../../../lib/orsClient';
 import { getClientIp, isRateLimited } from '../../../lib/rateLimit';
+import { parseRouteRequest } from '../../../lib/routeRequest';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const ip  = getClientIp(request);
 
   if (isRateLimited(`route:${ip}`, 20, 60_000)) {
-    return NextResponse.json(null, { status: 429 });
+    return NextResponse.json(
+      { error: 'For mange ruteberegninger. Vent litt og prøv igjen.' },
+      { status: 429 },
+    );
   }
 
-  const destId  = url.searchParams.get('dest_id');
-  const userLat = Number(url.searchParams.get('user_lat'));
-  const userLon = Number(url.searchParams.get('user_lon'));
-  const rawProfile = url.searchParams.get('profile') ?? 'foot-walking';
-  const profile: OrsProfile = ['foot-walking', 'cycling-regular', 'driving-car'].includes(rawProfile)
-    ? rawProfile as OrsProfile
-    : 'foot-walking';
-
-  if (!destId || !Number.isFinite(userLat) || !Number.isFinite(userLon)) {
-    return NextResponse.json({ error: 'Mangler dest_id, user_lat eller user_lon' }, { status: 400 });
+  const parsed = parseRouteRequest(url.searchParams);
+  if (!parsed.ok) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
   }
 
-  if (!supabase) return NextResponse.json(null);
+  const { userLat, userLon, profile, destination } = parsed.value;
+  let destLat: number;
+  let destLon: number;
 
-  const { data: dest, error: destErr } = await supabase
-    .from('destinations')
-    .select('lat, lon')
-    .eq('id', destId)
-    .maybeSingle();
+  if (destination.kind === 'id') {
+    if (!supabase) {
+      return NextResponse.json({ error: 'Databasen er ikke konfigurert' }, { status: 503 });
+    }
 
-  if (destErr || !dest) return NextResponse.json(null);
+    const { data: dest, error: destErr } = await supabase
+      .from('destinations')
+      .select('lat, lon')
+      .eq('id', destination.id)
+      .maybeSingle();
 
-  const route = await getRoute(userLat, userLon, dest.lat, dest.lon, profile);
+    if (destErr) {
+      console.error('[route] Kunne ikke hente turmål:', destErr.message);
+      return NextResponse.json({ error: 'Kunne ikke hente turmålet' }, { status: 502 });
+    }
+    if (!dest) {
+      return NextResponse.json({ error: 'Turmålet finnes ikke' }, { status: 404 });
+    }
+    destLat = dest.lat;
+    destLon = dest.lon;
+  } else {
+    destLat = destination.lat;
+    destLon = destination.lon;
+  }
+
+  const route = await getRoute(userLat, userLon, destLat, destLon, profile);
+  if (!route) {
+    return NextResponse.json(
+      { error: 'Fant ingen rute mellom startpunktet og turmålet' },
+      { status: 502 },
+    );
+  }
   return NextResponse.json(route);
 }

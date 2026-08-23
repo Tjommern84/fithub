@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { Destination, DestinationType } from '../lib/destinationsDb';
+import type { Destination, DestinationType, RouteDestination } from '../lib/destinationsDb';
 import type { WalkingRoute } from '../lib/orsClient';
 import type { TransitStop } from '../app/api/transit/route';
 
 const ICONS: Record<DestinationType, string> = {
   peak: '🏔', lake: '🌊', viewpoint: '👁', shelter: '⛺', hut: '🏠',
+  parking: 'P',
 };
 
 function fmt(min: number): string {
@@ -22,12 +23,33 @@ function fmtDep(expectedTime: string): string {
 
 type ActiveMode = 'foot' | 'cycling' | 'car' | 'transit';
 
+function routeUrl(
+  destination: RouteDestination,
+  fromLat: number,
+  fromLon: number,
+  profile: 'foot-walking' | 'cycling-regular' | 'driving-car',
+): string {
+  const params = new URLSearchParams({
+    user_lat: String(fromLat),
+    user_lon: String(fromLon),
+    profile,
+  });
+  if (destination.routeByCoordinates) {
+    params.set('dest_lat', String(destination.lat));
+    params.set('dest_lon', String(destination.lon));
+  } else {
+    params.set('dest_id', destination.id);
+  }
+  return `/api/route?${params.toString()}`;
+}
+
 type Props = {
-  destination: Destination;
+  destination: RouteDestination;
   userLat: number;
   userLon: number;
   footRoute: WalkingRoute | null;
   footLoading: boolean;
+  footError?: string | null;
   activeMode: ActiveMode;
   onModeChange: (mode: ActiveMode, coords?: [number, number][]) => void;
   onClose: () => void;
@@ -39,6 +61,7 @@ export default function DestinationPanel({
   userLon,
   footRoute,
   footLoading,
+  footError,
   activeMode,
   onModeChange,
   onClose,
@@ -49,12 +72,13 @@ export default function DestinationPanel({
   const [transitLoading, setTransitLoading] = useState(true);
   const [parkingLoading, setParkingLoading] = useState(true);
   const [nearestParking, setNearestParking] = useState<Destination | null>(null);
+  const [drivingRoute, setDrivingRoute] = useState<WalkingRoute | null>(null);
   const [parkingRoute, setParkingRoute] = useState<WalkingRoute | null>(null);
 
   // Hent sykkelrute og kollektiv parallelt når panel åpnes
   useEffect(() => {
     // Sykkel
-    fetch(`/api/route?dest_id=${destination.id}&user_lat=${userLat}&user_lon=${userLon}&profile=cycling-regular`)
+    fetch(routeUrl(destination, userLat, userLon, 'cycling-regular'))
       .then(r => r.ok ? r.json() : null)
       .then((d: WalkingRoute | null) => setCyclingRoute(d))
       .catch(() => {})
@@ -85,9 +109,13 @@ export default function DestinationPanel({
         });
         const p = sorted[0];
         setNearestParking(p);
-        // Gå-rute fra parkering til destinasjon
-        const r = await fetch(`/api/route?dest_id=${destination.id}&user_lat=${p.lat}&user_lon=${p.lon}&profile=foot-walking`);
-        if (r.ok) setParkingRoute(await r.json());
+        // Bilrute til parkeringen + gå-rute videre til turmålet.
+        const [driveResponse, walkResponse] = await Promise.all([
+          fetch(routeUrl(p, userLat, userLon, 'driving-car')),
+          fetch(routeUrl(destination, p.lat, p.lon, 'foot-walking')),
+        ]);
+        if (driveResponse.ok) setDrivingRoute(await driveResponse.json());
+        if (walkResponse.ok) setParkingRoute(await walkResponse.json());
       })
       .catch(() => {})
       .finally(() => setParkingLoading(false));
@@ -103,9 +131,11 @@ export default function DestinationPanel({
   ) => (
     <button
       type="button"
+      disabled={loading}
       onClick={() => onModeChange(mode, coords)}
       className={[
         'flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left transition',
+        loading ? 'cursor-wait opacity-70' : '',
         activeMode === mode ? 'bg-brand-cream ring-1 ring-brand-copper' : 'hover:bg-slate-50',
       ].join(' ')}
     >
@@ -125,7 +155,7 @@ export default function DestinationPanel({
   );
 
   return (
-    <div className="relative border-b border-slate-200 bg-white">
+    <div data-testid="destination-panel" className="relative border-b border-slate-200 bg-white">
       <button
         type="button"
         onClick={onClose}
@@ -157,7 +187,9 @@ export default function DestinationPanel({
             footRoute
               ? <>{footRoute.distanceKm.toFixed(1)} km · {fmt(footRoute.durationMin)}
                   {footRoute.elevationGainM != null && ` · +${footRoute.elevationGainM} hm`}</>
-              : 'Ingen rute funnet',
+              : <span className={footError ? 'text-red-600' : undefined}>
+                  {footError ?? 'Ingen rute funnet'}
+                </span>,
             footLoading,
             footRoute?.coordinates
           )}
@@ -175,14 +207,17 @@ export default function DestinationPanel({
             'car', '🚗', 'Med bil',
             nearestParking
               ? <>Parkering: <span className="font-medium">{nearestParking.name}</span>
+                  {drivingRoute && ` · ${fmt(drivingRoute.durationMin)} med bil`}
                   {parkingRoute && ` · ${parkingRoute.distanceKm.toFixed(1)} km å gå derfra`}</>
               : parkingLoading ? null : 'Ingen navngitt parkering funnet i nærheten',
             parkingLoading,
-            parkingRoute?.coordinates
+            drivingRoute && parkingRoute
+              ? [...drivingRoute.coordinates, ...parkingRoute.coordinates]
+              : drivingRoute?.coordinates ?? parkingRoute?.coordinates
           )}
 
           {modeButton(
-            'transit', '🚌', 'Kollektivt',
+            'transit', '🚌', 'Kollektiv nær målet',
             transitStops.length > 0
               ? <>
                   {transitStops.slice(0, 2).map(s => (

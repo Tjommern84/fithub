@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Polyline, Marker, CircleMarker, Popup, useMap,
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import type { Trail, TrailType } from '../lib/trailsDb';
 import type { Settlement } from '../lib/settlementsDb';
-import type { Destination, DestinationType } from '../lib/destinationsDb';
+import type { Destination, DestinationType, RouteDestination } from '../lib/destinationsDb';
 import type { WalkingRoute } from '../lib/orsClient';
 import DestinationPanel from './DestinationPanel';
 import { configureLeafletIcons } from '../lib/leafletIcons';
@@ -52,6 +52,7 @@ const DESTINATION_COLORS: Record<DestinationType, string> = {
   viewpoint: '#8b5cf6',
   shelter:   '#10b981',
   hut:       '#ef4444',
+  parking:   '#64748b',
 };
 
 const DESTINATION_LABELS: Record<DestinationType, string> = {
@@ -60,6 +61,7 @@ const DESTINATION_LABELS: Record<DestinationType, string> = {
   viewpoint: 'Utsiktspunkt',
   shelter:   'Gapahuk',
   hut:       'Hytte',
+  parking:   'Parkering',
 };
 
 const ROUTE_COLOR = '#D4872A';
@@ -281,6 +283,32 @@ function BoundsWatcher({ onChange }: { onChange: (bounds: L.LatLngBounds) => voi
   return null;
 }
 
+function MapViewportController({
+  center,
+  routeCoordinates,
+}: {
+  center: [number, number];
+  routeCoordinates: [number, number][];
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center, Math.max(map.getZoom(), 12), { animate: true });
+  }, [map, center]);
+
+  useEffect(() => {
+    if (routeCoordinates.length < 2) return;
+    const bounds = L.latLngBounds(
+      routeCoordinates.map(([lon, lat]) => [lat, lon] as [number, number]),
+    );
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [32, 32], maxZoom: 15 });
+    }
+  }, [map, routeCoordinates]);
+
+  return null;
+}
+
 function SelectionWatcher({ groupKey, trails }: { groupKey: string | null; trails: Trail[] }) {
   const map = useMap();
 
@@ -354,6 +382,12 @@ function DestinationSvgIcon({ type, size = 16 }: { type: DestinationType; size?:
       <path d="M6 14 V10 H10 V14" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
     </svg>
   );
+  if (type === 'parking') return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect x="2" y="1.5" width="12" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
+      <path d="M6 12 V4 H9 A2.5 2.5 0 0 1 9 9 H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M2 14 H14 M3 14 V7 L8 3 L13 7 V14" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
@@ -381,12 +415,15 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   const [activeChip, setActiveChip] = useState<FilterChip>('turmaal');
   const [showSettings, setShowSettings] = useState(false);
   const [selectedDestId, setSelectedDestId] = useState<string | null>(initialDestId ?? null);
+  const [selectedDestSnapshot, setSelectedDestSnapshot] = useState<RouteDestination | null>(null);
   const [footRoute, setFootRoute] = useState<WalkingRoute | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
   const [activeRouteCoords, setActiveRouteCoords] = useState<[number, number][]>([]);
   const [activeRouteColor, setActiveRouteColor] = useState(ROUTE_COLOR);
   const [activeMode, setActiveMode] = useState<'foot' | 'cycling' | 'car' | 'transit'>('foot');
   const [pinMode, setPinMode] = useState(false);
+  const [goalMode, setGoalMode] = useState(false);
   const [pinPosition, setPinPosition] = useState<[number, number] | null>(null);
   const [pinKey, setPinKey] = useState(0);
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
@@ -395,12 +432,79 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   // brukstilfeller.
   const [hideShortTrails, setHideShortTrails] = useState(true);
   const fetchSeq = useRef(0);
+  const routeSeq = useRef(0);
+  const routeAbortRef = useRef<AbortController | null>(null);
+  const selectedDestinationRef = useRef<RouteDestination | null>(null);
+  const initialDestinationDisabledRef = useRef(false);
   const settingsRef = useRef<HTMLDivElement>(null);
 
   const startPoint = useMemo<[number, number]>(
     () => pinPosition ?? center,
     [pinPosition, center],
   );
+  const startPointRef = useRef(startPoint);
+  const pinPositionRef = useRef(pinPosition);
+
+  useEffect(() => {
+    startPointRef.current = startPoint;
+    pinPositionRef.current = pinPosition;
+  }, [startPoint, pinPosition]);
+
+  const calculateFootRoute = useCallback((
+    destination: RouteDestination,
+    origin: [number, number],
+  ) => {
+    const seq = ++routeSeq.current;
+    routeAbortRef.current?.abort();
+    const controller = new AbortController();
+    routeAbortRef.current = controller;
+    const [userLat, userLon] = origin;
+    const params = new URLSearchParams({
+      user_lat: String(userLat),
+      user_lon: String(userLon),
+      profile: 'foot-walking',
+    });
+    if (destination.routeByCoordinates) {
+      params.set('dest_lat', String(destination.lat));
+      params.set('dest_lon', String(destination.lon));
+    } else {
+      params.set('dest_id', destination.id);
+    }
+
+    setFootRoute(null);
+    setActiveRouteCoords([]);
+    setActiveMode('foot');
+    setActiveRouteColor(ROUTE_COLOR);
+    setRouteError(null);
+    setRouteLoading(true);
+
+    fetch(`/api/route?${params.toString()}`, { signal: controller.signal })
+      .then(async (res) => {
+        const data = await res.json().catch(() => null) as WalkingRoute | { error?: string } | null;
+        if (!res.ok) {
+          const message = data && 'error' in data && data.error
+            ? data.error
+            : 'Kunne ikke beregne ruten';
+          throw new Error(message);
+        }
+        if (!data || !('coordinates' in data) || data.coordinates.length === 0) {
+          throw new Error('Fant ingen rute mellom startpunktet og turmålet');
+        }
+        return data;
+      })
+      .then((data) => {
+        if (seq !== routeSeq.current) return;
+        setFootRoute(data);
+        setActiveRouteCoords(data.coordinates);
+      })
+      .catch((error: Error) => {
+        if (error.name === 'AbortError' || seq !== routeSeq.current) return;
+        setRouteError(error.message);
+      })
+      .finally(() => {
+        if (seq === routeSeq.current) setRouteLoading(false);
+      });
+  }, []);
 
   // Derived filter state from chip selection
   const visibleTypes = useMemo((): Record<TrailType, boolean> => {
@@ -493,11 +597,17 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   useEffect(() => {
     if (!('geolocation' in navigator)) return;
     navigator.geolocation.getCurrentPosition(
-      (pos) => setCenter([pos.coords.latitude, pos.coords.longitude]),
+      (pos) => {
+        const nextCenter: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+        setCenter(nextCenter);
+        if (!pinPositionRef.current && selectedDestinationRef.current) {
+          calculateFootRoute(selectedDestinationRef.current, nextCenter);
+        }
+      },
       () => { /* behold Drammen som fallback */ },
       { timeout: 8000 }
     );
-  }, []);
+  }, [calculateFootRoute]);
 
   const handleBoundsChange = useCallback((bounds: L.LatLngBounds) => {
     const seq = ++fetchSeq.current;
@@ -521,10 +631,25 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
       })
       .catch(() => {});
 
-    fetch(`/api/destinations?${params.toString()}`)
+    fetch(`/api/destinations?${params.toString()}&types=peak,lake,viewpoint,shelter,hut`)
       .then((res) => res.ok ? res.json() : null)
       .then((data: Destination[] | null) => {
-        if (data !== null && seq === fetchSeq.current) setDestinations(data);
+        if (data !== null && seq === fetchSeq.current) {
+          setDestinations(data);
+          if (
+            initialDestId
+            && !initialDestinationDisabledRef.current
+            && !selectedDestinationRef.current
+          ) {
+            const initialDestination = data.find(destination => destination.id === initialDestId);
+            if (initialDestination) {
+              selectedDestinationRef.current = initialDestination;
+              setSelectedDestId(initialDestination.id);
+              setSelectedDestSnapshot(initialDestination);
+              calculateFootRoute(initialDestination, startPointRef.current);
+            }
+          }
+        }
       })
       .catch(() => {});
 
@@ -534,32 +659,22 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
         if (data !== null && seq === fetchSeq.current) setTransitStops(data);
       })
       .catch(() => {});
-  }, []);
+  }, [calculateFootRoute, initialDestId]);
 
-  const selectedDestination = useMemo(
-    () => destinations.find(d => d.id === selectedDestId) ?? null,
-    [destinations, selectedDestId]
-  );
+  const selectedDestination = useMemo<RouteDestination | null>(() => {
+    if (!selectedDestId) return null;
+    if (selectedDestSnapshot?.id === selectedDestId) return selectedDestSnapshot;
+    return destinations.find(d => d.id === selectedDestId) ?? null;
+  }, [destinations, selectedDestId, selectedDestSnapshot]);
 
-  const handleSelectDestination = useCallback((dest: Destination) => {
+  const handleSelectDestination = useCallback((dest: RouteDestination) => {
+    initialDestinationDisabledRef.current = true;
+    selectedDestinationRef.current = dest;
     setSelectedDestId(dest.id);
-    setFootRoute(null);
-    setActiveRouteCoords([]);
-    setActiveMode('foot');
-    setActiveRouteColor(ROUTE_COLOR);
-    setRouteLoading(true);
-    const [userLat, userLon] = startPoint;
-    fetch(`/api/route?dest_id=${dest.id}&user_lat=${userLat}&user_lon=${userLon}&profile=foot-walking`)
-      .then(res => res.ok ? res.json() : null)
-      .then((data: WalkingRoute | null) => {
-        if (data) {
-          setFootRoute(data);
-          setActiveRouteCoords(data.coordinates);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setRouteLoading(false));
-  }, [startPoint]);
+    setSelectedDestSnapshot(dest);
+    setGoalMode(false);
+    calculateFootRoute(dest, startPointRef.current);
+  }, [calculateFootRoute]);
 
   const handleModeChange = useCallback((
     mode: 'foot' | 'cycling' | 'car' | 'transit',
@@ -632,7 +747,14 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                   checked={pinMode}
                   onChange={(e) => {
                     setPinMode(e.target.checked);
-                    if (!e.target.checked) setPinPosition(null);
+                    if (e.target.checked) setGoalMode(false);
+                    if (!e.target.checked) {
+                      setPinPosition(null);
+                      setPinKey(k => k + 1);
+                      if (selectedDestinationRef.current) {
+                        calculateFootRoute(selectedDestinationRef.current, center);
+                      }
+                    }
                   }}
                   className="h-4 w-4"
                 />
@@ -641,6 +763,23 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
               {pinMode && !pinPosition && (
                 <p className="mt-1.5 pl-6 text-xs italic text-slate-400">
                   Klikk på kartet for å plassere startpunkt
+                </p>
+              )}
+              <label className="flex cursor-pointer items-center gap-2.5 py-1.5 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={goalMode}
+                  onChange={(e) => {
+                    setGoalMode(e.target.checked);
+                    if (e.target.checked) setPinMode(false);
+                  }}
+                  className="h-4 w-4"
+                />
+                Sett mål
+              </label>
+              {goalMode && (
+                <p className="mt-1.5 pl-6 text-xs italic text-slate-400">
+                  Klikk på kartet for å velge turmål
                 </p>
               )}
             </div>
@@ -653,6 +792,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
 
         {/* Kart */}
         <div
+          data-testid="trail-map"
           className="h-[60vh] w-full overflow-hidden lg:h-[700px] lg:flex-1"
           style={{ borderRadius: 22 }}
         >
@@ -666,14 +806,27 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
 
             <BoundsWatcher onChange={handleBoundsChange} />
             <SelectionWatcher groupKey={selectedGroupKey} trails={selectedGroup?.trails ?? []} />
+            <MapViewportController center={center} routeCoordinates={activeRouteCoords} />
             <MapClickHandler
-              enabled={pinMode}
+              enabled={pinMode || goalMode}
               onMapClick={(pos) => {
-                setPinPosition(pos);
-                setPinKey(k => k + 1);
-                setActiveRouteCoords([]);
-                setFootRoute(null);
-                setSelectedDestId(null);
+                if (pinMode) {
+                  setPinPosition(pos);
+                  setPinKey(k => k + 1);
+                  if (selectedDestinationRef.current) {
+                    calculateFootRoute(selectedDestinationRef.current, pos);
+                  }
+                  return;
+                }
+                handleSelectDestination({
+                  id: `map-goal-${pos[0].toFixed(6)}-${pos[1].toFixed(6)}`,
+                  name: 'Valgt mål',
+                  destinationType: 'viewpoint',
+                  elevationM: null,
+                  lat: pos[0],
+                  lon: pos[1],
+                  routeByCoordinates: true,
+                });
               }}
             />
 
@@ -691,11 +844,30 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                 eventHandlers={{
                   dragend(e) {
                     const { lat, lng } = e.target.getLatLng();
-                    setPinPosition([lat, lng]);
+                    const nextStart: [number, number] = [lat, lng];
+                    setPinPosition(nextStart);
+                    setPinKey(k => k + 1);
+                    if (selectedDestinationRef.current) {
+                      calculateFootRoute(selectedDestinationRef.current, nextStart);
+                    }
                   },
                 }}
               >
                 <Popup>Startpunkt for turen</Popup>
+              </Marker>
+            )}
+
+            {selectedDestination?.routeByCoordinates && (
+              <Marker
+                position={[selectedDestination.lat, selectedDestination.lon]}
+                icon={L.divIcon({
+                  html: '<div style="background:#ef4444;width:24px;height:24px;border-radius:50%;border:4px solid white;box-shadow:0 2px 5px rgba(0,0,0,.4)"></div>',
+                  className: '',
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 12],
+                })}
+              >
+                <Popup>Valgt turmål</Popup>
               </Marker>
             )}
 
@@ -817,11 +989,14 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
 
         {/* Resultatpanel — kun desktop */}
         <div
-          className="hidden flex-col overflow-hidden bg-white lg:flex"
-          style={{ width: 340, height: 700, borderRadius: 22, flexShrink: 0, boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}
+          className={[
+            selectedDestination ? 'flex' : 'hidden',
+            'w-full flex-col overflow-hidden bg-white lg:flex lg:h-[700px] lg:w-[340px] lg:flex-shrink-0',
+          ].join(' ')}
+          style={{ borderRadius: 22, boxShadow: '0 4px 24px rgba(0,0,0,.08)' }}
         >
           {/* Panel header */}
-          <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div className="hidden flex-shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3 lg:flex">
             <span className="text-sm font-semibold text-slate-900">
               {totalCount} {totalCount === 1 ? 'resultat' : 'resultater'}
             </span>
@@ -839,12 +1014,20 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                 userLon={startPoint[1]}
                 footRoute={footRoute}
                 footLoading={routeLoading}
+                footError={routeError}
                 activeMode={activeMode}
                 onModeChange={handleModeChange}
                 onClose={() => {
+                  initialDestinationDisabledRef.current = true;
+                  selectedDestinationRef.current = null;
+                  routeAbortRef.current?.abort();
+                  routeSeq.current += 1;
                   setSelectedDestId(null);
+                  setSelectedDestSnapshot(null);
                   setActiveRouteCoords([]);
                   setFootRoute(null);
+                  setRouteError(null);
+                  setRouteLoading(false);
                 }}
               />
             )}
@@ -889,6 +1072,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
               </div>
             )}
 
+            <div className="hidden lg:block">
             {unifiedList.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">
                 {activeChip === 'tettsteder'
@@ -906,6 +1090,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                     return (
                       <button
                         key={dest.id}
+                        data-destination-id={dest.id}
                         type="button"
                         onClick={() => handleSelectDestination(dest)}
                         className="w-full px-4 py-3 text-left transition hover:bg-slate-50"
@@ -965,6 +1150,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                 })}
               </div>
             )}
+            </div>
           </div>
         </div>
       </div>
@@ -991,6 +1177,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
                 return (
                   <button
                     key={dest.id}
+                    data-destination-id={dest.id}
                     type="button"
                     onClick={() => handleSelectDestination(dest)}
                     className="flex-shrink-0 bg-white text-left"
