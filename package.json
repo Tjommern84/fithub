@@ -12,6 +12,7 @@
     "test": "npm run test:unit",
     "test:unit": "tsx --test tests/*.test.ts",
     "test:smoke": "node scripts/smoke-test.mjs",
+    "test:trail": "node scripts/test-trail-planner.mjs",
     "test:production": "node scripts/test-production.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

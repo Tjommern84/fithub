@@ -12,6 +12,7 @@ const DESTINATION_ICONS: Record<DestinationType, string> = {
   viewpoint: '👁',
   shelter:   '⛺',
   hut:       '🏠',
+  parking:   'P',
 };
 
 const DESTINATION_LABELS: Record<DestinationType, string> = {
@@ -20,6 +21,7 @@ const DESTINATION_LABELS: Record<DestinationType, string> = {
   viewpoint: 'Utsiktspunkt',
   shelter:   'Gapahuk',
   hut:       'Hytte',
+  parking:   'Parkering',
 };
 
 export default function HomeDestinations() {
@@ -36,7 +38,13 @@ export default function HomeDestinations() {
   useEffect(() => {
     if (!location) return;
     let cancelled = false;
-    getNearestDestinations(location.lat, location.lon, 30, undefined, 8)
+    getNearestDestinations(
+      location.lat,
+      location.lon,
+      30,
+      ['peak', 'lake', 'viewpoint', 'shelter', 'hut'],
+      8,
+    )
       .then((destinations) => {
         if (!cancelled) setResult({ locationKey, destinations, hasError: false });
       })
