@@ -92,6 +92,73 @@ export type Database = {
 
         ]
       }
+      bookings: {
+        Row: {
+          cancellation_type: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          confirmed_at: string | null
+          created_at: string
+          id: string
+          lead_id: string
+          no_show_marked: boolean
+          no_show_marked_at: string | null
+          scheduled_at: string
+          service_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          cancellation_type?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          lead_id: string
+          no_show_marked?: boolean
+          no_show_marked_at?: string | null
+          scheduled_at: string
+          service_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          cancellation_type?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          id?: string
+          lead_id?: string
+          no_show_marked?: boolean
+          no_show_marked_at?: string | null
+          scheduled_at?: string
+          service_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_lead_id_fkey"
+            columns: ["lead_id"]
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_service_id_fkey"
+            columns: ["service_id"]
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       brreg_entities: {
         Row: {
           antall_ansatte: number | null
@@ -162,73 +229,6 @@ export type Database = {
 
         ]
       }
-      bookings: {
-        Row: {
-          cancellation_type: string | null
-          cancelled_at: string | null
-          cancelled_by: string | null
-          confirmed_at: string | null
-          created_at: string
-          id: string
-          lead_id: string
-          no_show_marked: boolean
-          no_show_marked_at: string | null
-          scheduled_at: string
-          service_id: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          cancellation_type?: string | null
-          cancelled_at?: string | null
-          cancelled_by?: string | null
-          confirmed_at?: string | null
-          created_at?: string
-          id?: string
-          lead_id: string
-          no_show_marked?: boolean
-          no_show_marked_at?: string | null
-          scheduled_at: string
-          service_id: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          cancellation_type?: string | null
-          cancelled_at?: string | null
-          cancelled_by?: string | null
-          confirmed_at?: string | null
-          created_at?: string
-          id?: string
-          lead_id?: string
-          no_show_marked?: boolean
-          no_show_marked_at?: string | null
-          scheduled_at?: string
-          service_id?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "bookings_lead_id_fkey"
-            columns: ["lead_id"]
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_service_id_fkey"
-            columns: ["service_id"]
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
       categories: {
         Row: {
           created_at: string | null
@@ -270,6 +270,232 @@ export type Database = {
         }
         Relationships: [
 
+        ]
+      }
+      content_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          is_active: boolean
+          key: string
+          label: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          key: string
+          label: string
+          sort_order: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          is_active?: boolean
+          key?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+
+        ]
+      }
+      content_category_listings: {
+        Row: {
+          address: string | null
+          category_key: string | null
+          city: string | null
+          description: string | null
+          goals: Array<string> | null
+          lat: number | null
+          lon: number | null
+          offering_id: string | null
+          offering_name: string | null
+          price_level: string | null
+          provider_id: string | null
+          provider_kind: string | null
+          provider_name: string | null
+          quality_score: number | null
+          tags: Array<string> | null
+          venue_id: string | null
+          venue_kind: string | null
+          venue_name: string | null
+        }
+        Insert: {
+          address?: string | null
+          category_key?: string | null
+          city?: string | null
+          description?: string | null
+          goals?: Array<string> | null
+          lat?: number | null
+          lon?: number | null
+          offering_id?: string | null
+          offering_name?: string | null
+          price_level?: string | null
+          provider_id?: string | null
+          provider_kind?: string | null
+          provider_name?: string | null
+          quality_score?: number | null
+          tags?: Array<string> | null
+          venue_id?: string | null
+          venue_kind?: string | null
+          venue_name?: string | null
+        }
+        Update: {
+          address?: string | null
+          category_key?: string | null
+          city?: string | null
+          description?: string | null
+          goals?: Array<string> | null
+          lat?: number | null
+          lon?: number | null
+          offering_id?: string | null
+          offering_name?: string | null
+          price_level?: string | null
+          provider_id?: string | null
+          provider_kind?: string | null
+          provider_name?: string | null
+          quality_score?: number | null
+          tags?: Array<string> | null
+          venue_id?: string | null
+          venue_kind?: string | null
+          venue_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_category_listings_category_key_fkey"
+            columns: ["category_key"]
+            referencedRelation: "content_categories"
+            referencedColumns: ["key"]
+          }
+        ]
+      }
+      content_migration_runs: {
+        Row: {
+          completed_at: string | null
+          counters: Json
+          error_message: string | null
+          id: string
+          plan_hash: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          counters: Json
+          error_message?: string | null
+          id?: string
+          plan_hash: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          counters?: Json
+          error_message?: string | null
+          id?: string
+          plan_hash?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+
+        ]
+      }
+      content_review_queue: {
+        Row: {
+          created_at: string
+          id: string
+          reasons: Array<string>
+          resolved_at: string | null
+          service_id: string
+          status: string
+          suggested_action: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reasons: Array<string>
+          resolved_at?: string | null
+          service_id: string
+          status?: string
+          suggested_action: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reasons?: Array<string>
+          resolved_at?: string | null
+          service_id?: string
+          status?: string
+          suggested_action?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_review_queue_service_id_fkey"
+            columns: ["service_id"]
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      content_sources: {
+        Row: {
+          confidence: number
+          entity_type: string
+          external_id: string
+          imported_at: string
+          offering_id: string | null
+          provider_id: string | null
+          source: string
+          source_updated_at: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          confidence?: number
+          entity_type: string
+          external_id: string
+          imported_at?: string
+          offering_id?: string | null
+          provider_id?: string | null
+          source: string
+          source_updated_at?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          confidence?: number
+          entity_type?: string
+          external_id?: string
+          imported_at?: string
+          offering_id?: string | null
+          provider_id?: string | null
+          source?: string
+          source_updated_at?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_sources_provider_id_fkey"
+            columns: ["provider_id"]
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_sources_venue_id_fkey"
+            columns: ["venue_id"]
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_sources_offering_id_fkey"
+            columns: ["offering_id"]
+            referencedRelation: "offerings"
+            referencedColumns: ["id"]
+          }
         ]
       }
       deletion_requests: {
@@ -631,6 +857,73 @@ export type Database = {
           }
         ]
       }
+      legacy_service_map: {
+        Row: {
+          confidence: number
+          migrated_at: string
+          migration_run_id: string | null
+          offering_id: string | null
+          provider_id: string | null
+          reasons: Array<string>
+          service_id: string
+          status: string
+          venue_id: string | null
+        }
+        Insert: {
+          confidence: number
+          migrated_at?: string
+          migration_run_id?: string | null
+          offering_id?: string | null
+          provider_id?: string | null
+          reasons: Array<string>
+          service_id: string
+          status: string
+          venue_id?: string | null
+        }
+        Update: {
+          confidence?: number
+          migrated_at?: string
+          migration_run_id?: string | null
+          offering_id?: string | null
+          provider_id?: string | null
+          reasons?: Array<string>
+          service_id?: string
+          status?: string
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legacy_service_map_service_id_fkey"
+            columns: ["service_id"]
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legacy_service_map_provider_id_fkey"
+            columns: ["provider_id"]
+            referencedRelation: "providers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legacy_service_map_venue_id_fkey"
+            columns: ["venue_id"]
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legacy_service_map_offering_id_fkey"
+            columns: ["offering_id"]
+            referencedRelation: "offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legacy_service_map_migration_run_id_fkey"
+            columns: ["migration_run_id"]
+            referencedRelation: "content_migration_runs"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       locations: {
         Row: {
           city: string | null
@@ -699,6 +992,117 @@ export type Database = {
             foreignKeyName: "notification_preferences_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      offering_categories: {
+        Row: {
+          category_key: string
+          is_primary: boolean
+          offering_id: string
+        }
+        Insert: {
+          category_key: string
+          is_primary?: boolean
+          offering_id: string
+        }
+        Update: {
+          category_key?: string
+          is_primary?: boolean
+          offering_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offering_categories_offering_id_fkey"
+            columns: ["offering_id"]
+            referencedRelation: "offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offering_categories_category_key_fkey"
+            columns: ["category_key"]
+            referencedRelation: "content_categories"
+            referencedColumns: ["key"]
+          }
+        ]
+      }
+      offering_venues: {
+        Row: {
+          is_primary: boolean
+          offering_id: string
+          venue_id: string
+        }
+        Insert: {
+          is_primary?: boolean
+          offering_id: string
+          venue_id: string
+        }
+        Update: {
+          is_primary?: boolean
+          offering_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offering_venues_offering_id_fkey"
+            columns: ["offering_id"]
+            referencedRelation: "offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offering_venues_venue_id_fkey"
+            columns: ["venue_id"]
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      offerings: {
+        Row: {
+          created_at: string
+          delivery_mode: string
+          description: string | null
+          goals: Array<string>
+          id: string
+          is_active: boolean
+          name: string
+          price_level: string | null
+          provider_id: string | null
+          tags: Array<string>
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_mode?: string
+          description?: string | null
+          goals: Array<string>
+          id: string
+          is_active?: boolean
+          name: string
+          price_level?: string | null
+          provider_id?: string | null
+          tags: Array<string>
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivery_mode?: string
+          description?: string | null
+          goals?: Array<string>
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_level?: string | null
+          provider_id?: string | null
+          tags?: Array<string>
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offerings_provider_id_fkey"
+            columns: ["provider_id"]
+            referencedRelation: "providers"
             referencedColumns: ["id"]
           }
         ]
@@ -910,6 +1314,64 @@ export type Database = {
           {
             foreignKeyName: "provider_invites_created_by_fkey"
             columns: ["created_by"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      providers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          legal_name: string | null
+          name: string
+          orgnr: string | null
+          owner_user_id: string | null
+          phone: string | null
+          provider_kind: string
+          quality_score: number
+          updated_at: string
+          verification_status: string
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          is_active?: boolean
+          legal_name?: string | null
+          name: string
+          orgnr?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          provider_kind: string
+          quality_score?: number
+          updated_at?: string
+          verification_status?: string
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          legal_name?: string | null
+          name?: string
+          orgnr?: string | null
+          owner_user_id?: string | null
+          phone?: string | null
+          provider_kind?: string
+          quality_score?: number
+          updated_at?: string
+          verification_status?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "providers_owner_user_id_fkey"
+            columns: ["owner_user_id"]
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           }
@@ -1510,6 +1972,73 @@ export type Database = {
             foreignKeyName: "user_preferences_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      venues: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          email: string | null
+          id: string
+          lat: number | null
+          lon: number | null
+          municipality_code: string | null
+          name: string
+          phone: string | null
+          postcode: string | null
+          provider_id: string | null
+          quality_score: number
+          status: string
+          updated_at: string
+          venue_kind: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id: string
+          lat?: number | null
+          lon?: number | null
+          municipality_code?: string | null
+          name: string
+          phone?: string | null
+          postcode?: string | null
+          provider_id?: string | null
+          quality_score?: number
+          status?: string
+          updated_at?: string
+          venue_kind: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          lat?: number | null
+          lon?: number | null
+          municipality_code?: string | null
+          name?: string
+          phone?: string | null
+          postcode?: string | null
+          provider_id?: string | null
+          quality_score?: number
+          status?: string
+          updated_at?: string
+          venue_kind?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venues_provider_id_fkey"
+            columns: ["provider_id"]
+            referencedRelation: "providers"
             referencedColumns: ["id"]
           }
         ]
