@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  buildContentResultsSearchArgs,
+  canUseContentResultsSearch,
   mapRowToRankedService,
   type SearchServicesRow,
 } from '../lib/matchingDb';
@@ -62,4 +64,42 @@ test('normalizes nullable structured fields before rendering', () => {
   assert.equal(result.service.address, null);
   assert.equal(result.lat, undefined);
   assert.equal(result.lon, undefined);
+});
+
+test('builds a bounded SQL 45 request with filters and pagination', () => {
+  const args = buildContentResultsSearchArgs({
+    mainCategory: 'trene-selv',
+    lat: 59.9139,
+    lon: 10.7522,
+    radiusKm: 500,
+    type: 'styrke',
+    venue: 'gym',
+    query: '  treningssenter  ',
+    tags: ['styrke'],
+    sort: 'rating',
+    limit: 250,
+    page: 3,
+  });
+
+  assert.deepEqual(args, {
+    p_main_category: 'trene-selv',
+    p_lat: 59.9139,
+    p_lon: 10.7522,
+    p_radius_km: 200,
+    p_service_type: 'styrke',
+    p_venue: 'gym',
+    p_query: 'treningssenter',
+    p_tags: ['styrke'],
+    p_sort: 'rating',
+    p_limit: 100,
+    p_offset: 200,
+  });
+});
+
+test('uses the structured results search only with a safe location shape', () => {
+  assert.equal(canUseContentResultsSearch({ mainCategory: 'helse' }), true);
+  assert.equal(canUseContentResultsSearch({ city: 'oslo' }), false);
+  assert.equal(canUseContentResultsSearch({ city: 'oslo', lat: 59.91, lon: 10.75 }), true);
+  assert.equal(canUseContentResultsSearch({ lat: 59.91 }), false);
+  assert.equal(canUseContentResultsSearch({ lat: 59.91, lon: 10.75, borough: 'sagene' }), false);
 });

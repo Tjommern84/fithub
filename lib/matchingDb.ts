@@ -177,6 +177,69 @@ export async function searchContentCategoryServices(
   );
 }
 
+export type ContentResultsSearchArgs = {
+  p_main_category: string | null;
+  p_lat: number | null;
+  p_lon: number | null;
+  p_radius_km: number;
+  p_service_type: string;
+  p_venue: string;
+  p_query: string | null;
+  p_tags: string[] | null;
+  p_sort: string;
+  p_limit: number;
+  p_offset: number;
+};
+
+export const canUseContentResultsSearch = (params: SearchParams): boolean => {
+  const hasLat = Number.isFinite(params.lat);
+  const hasLon = Number.isFinite(params.lon);
+
+  // SQL 45 searches places geographically. If a caller only has a city name,
+  // retain the legacy coverage search rather than silently searching Norway.
+  if (params.city && (!hasLat || !hasLon)) return false;
+  return !params.borough && !params.tag && hasLat === hasLon;
+};
+
+export const buildContentResultsSearchArgs = (
+  params: SearchParams,
+): ContentResultsSearchArgs => {
+  const pageSize = Math.min(Math.max(params.limit ?? 50, 1), 100);
+  const page = Math.max(params.page ?? 1, 1);
+
+  return {
+    p_main_category: params.mainCategory ?? null,
+    p_lat: params.lat ?? null,
+    p_lon: params.lon ?? null,
+    p_radius_km: Math.min(Math.max(params.radiusKm ?? 25, 1), 200),
+    p_service_type: params.type ?? 'any',
+    p_venue: params.venue ?? 'either',
+    p_query: params.query?.trim() || null,
+    p_tags: params.tags && params.tags.length > 0 ? params.tags : null,
+    p_sort: params.sort ?? (params.lat != null && params.lon != null ? 'nearest' : 'best_match'),
+    p_limit: pageSize,
+    p_offset: (page - 1) * pageSize,
+  };
+};
+
+/**
+ * Full structured read path for /resultater. SQL 45 returns the existing
+ * RankedService contract so cards, maps and provider profile links remain
+ * compatible while provider/venue/offering becomes the discovery source.
+ */
+export async function searchContentServices(params: SearchParams): Promise<RankedService[]> {
+  if (!supabase || !canUseContentResultsSearch(params)) return [];
+  const { data, error } = await supabase.rpc(
+    'search_content_services',
+    buildContentResultsSearchArgs(params),
+  );
+
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map((row) =>
+    mapRowToRankedService(row as SearchServicesRow)
+  );
+}
+
 // ─── Tier 3: frittstående navnetreff, ingen dekningsbegrensning ──────────────
 // Egen type — IKKE RankedService — siden Tier 3-rader mangler ekte deknings-/score-semantikk
 // (search_services_unanchored() joiner ikke mot service_coverage).
@@ -310,16 +373,19 @@ export type SearchWithFallbackResult = {
 
 // Orkestrerer Tier 1 → 2 → 3, stopper ved første treff. Rekoordineringen i Tier 2 er
 // 100% intern her — lekker aldri til LocationContext eller lagret lokasjon.
-export async function searchServicesWithFallback(
-  params: SearchParams
+type AnchoredSearch = (params: SearchParams) => Promise<RankedService[]>;
+
+async function runSearchWithFallback(
+  params: SearchParams,
+  anchoredSearch: AnchoredSearch,
 ): Promise<SearchWithFallbackResult> {
   if (!params.query) {
-    const results = await searchServices(params);
+    const results = await anchoredSearch(params);
     return { results, unanchoredResults: [], fallbackNotice: null };
   }
 
   // Tier 1 — uendret, lokasjonsforankret søk
-  const tier1Results = await searchServices(params);
+  const tier1Results = await anchoredSearch(params);
   if (tier1Results.length > 0) {
     return { results: tier1Results, unanchoredResults: [], fallbackNotice: null };
   }
@@ -327,7 +393,7 @@ export async function searchServicesWithFallback(
   // Tier 2 — flytt søkeområde til et stedsnavn funnet i søketeksten
   const settlement = await findSettlementInQuery(params.query);
   if (settlement) {
-    const tier2Results = await searchServices({
+    const tier2Results = await anchoredSearch({
       ...params,
       lat: settlement.lat,
       lon: settlement.lon,
@@ -367,4 +433,30 @@ export async function searchServicesWithFallback(
   }
 
   return { results: [], unanchoredResults: [], fallbackNotice: null };
+}
+
+export async function searchServicesWithFallback(
+  params: SearchParams,
+): Promise<SearchWithFallbackResult> {
+  return runSearchWithFallback(params, searchServices);
+}
+
+async function searchContentFirst(params: SearchParams): Promise<RankedService[]> {
+  if (canUseContentResultsSearch(params)) {
+    try {
+      const structuredResults = await searchContentServices(params);
+      if (structuredResults.length > 0) return structuredResults;
+    } catch {
+      // SQL 45 is deployed separately. Keep existing search available during
+      // rollout and in environments that have not installed the function.
+    }
+  }
+
+  return searchServices(params);
+}
+
+export async function searchContentServicesWithFallback(
+  params: SearchParams,
+): Promise<SearchWithFallbackResult> {
+  return runSearchWithFallback(params, searchContentFirst);
 }

@@ -95,12 +95,81 @@ async function main(): Promise<void> {
     return [key, Array.isArray(data) && data.length > 0];
   })));
 
+  const structuredResultsSearch = Object.fromEntries(await Promise.all(categoryKeys.map(async (key) => {
+    const { data, error } = await client.rpc('search_content_services', {
+      p_main_category: key,
+      p_lat: null,
+      p_lon: null,
+      p_radius_km: 50,
+      p_service_type: 'any',
+      p_venue: 'either',
+      p_query: null,
+      p_tags: null,
+      p_sort: 'best_match',
+      p_limit: 1,
+      p_offset: 0,
+    });
+    if (error) throw new Error(`search_content_services/${key}: ${error.message}`);
+    return [key, Array.isArray(data) && data.length > 0];
+  })));
+
+  const { data: structuredOsloData, error: structuredOsloError } = await client.rpc(
+    'search_content_services',
+    {
+      p_main_category: null,
+      p_lat: 59.9139,
+      p_lon: 10.7522,
+      p_radius_km: 50,
+      p_service_type: 'any',
+      p_venue: 'either',
+      p_query: null,
+      p_tags: null,
+      p_sort: 'nearest',
+      p_limit: 100,
+      p_offset: 0,
+    },
+  );
+  if (structuredOsloError) throw new Error(`search_content_services/oslo: ${structuredOsloError.message}`);
+  const structuredOsloRows = (Array.isArray(structuredOsloData) ? structuredOsloData : []) as Array<{
+    service_id?: string;
+  }>;
+  const structuredOsloIds = structuredOsloRows
+    .map((row) => row.service_id)
+    .filter((id): id is string => typeof id === 'string');
+
+  const structuredFilterCases = [
+    { key: 'query', query: 'styrke', serviceType: 'any', tags: null, category: null },
+    { key: 'type', query: null, serviceType: 'styrke', tags: null, category: null },
+    { key: 'tag', query: null, serviceType: 'any', tags: ['tuftepark'], category: 'utendors' },
+  ] as const;
+  const structuredFilterSearch = Object.fromEntries(await Promise.all(
+    structuredFilterCases.map(async (filterCase) => {
+      const { data, error } = await client.rpc('search_content_services', {
+        p_main_category: filterCase.category,
+        p_lat: 59.9139,
+        p_lon: 10.7522,
+        p_radius_km: 50,
+        p_service_type: filterCase.serviceType,
+        p_venue: 'either',
+        p_query: filterCase.query,
+        p_tags: filterCase.tags,
+        p_sort: 'best_match',
+        p_limit: 1,
+        p_offset: 0,
+      });
+      if (error) throw new Error(`search_content_services/${filterCase.key}: ${error.message}`);
+      return [filterCase.key, Array.isArray(data) && data.length > 0];
+    }),
+  ));
+
   const report = {
     verifiedAt: new Date().toISOString(),
     counts,
     categories: byCategory,
     homepageSearch,
     structuredCategorySearch,
+    structuredResultsSearch,
+    structuredFilterSearch,
     legacyCorrections: {
       invalidTreneSamen: invalidCategories ?? 0,
       paraidrettPrimary: paraServices ?? 0,
@@ -123,6 +192,13 @@ async function main(): Promise<void> {
       allHomepageCategoriesSearchable: categoryKeys.every((key) => homepageSearch[key] === true),
       allStructuredCategoriesSearchable:
         categoryKeys.every((key) => structuredCategorySearch[key] === true),
+      allStructuredResultsCategoriesSearchable:
+        categoryKeys.every((key) => structuredResultsSearch[key] === true),
+      structuredResultsReturnNearbyRows: structuredOsloRows.length > 0,
+      structuredResultsHaveUniqueServices:
+        new Set(structuredOsloIds).size === structuredOsloIds.length,
+      structuredResultsFiltersWork:
+        structuredFilterCases.every((filterCase) => structuredFilterSearch[filterCase.key] === true),
     },
   };
   console.log(JSON.stringify(report, null, 2));

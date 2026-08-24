@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { cityCoordinates, normalizeCity } from '../../lib/matching';
 import type { RankedService } from '../../lib/matching';
 import { geocodeNorwegianCity } from '../../lib/geocode';
-import { searchServicesWithFallback } from '../../lib/matchingDb';
+import { searchContentServicesWithFallback } from '../../lib/matchingDb';
 import type { UnanchoredService, FallbackNotice } from '../../lib/matchingDb';
 import { parseServiceType, parseSort, parseVenue } from '../../lib/resultFilters';
 import { parseMainCategory, CATEGORY_LABELS, getCategoryConfig } from '../../lib/categoryConfig';
@@ -160,10 +160,10 @@ export default async function ResultsPage({
       };
 
       const fetches: [
-        ReturnType<typeof searchServicesWithFallback>,
+        ReturnType<typeof searchContentServicesWithFallback>,
         Promise<GroupSession[]>
       ] = [
-        searchServicesWithFallback(baseParams),
+        searchContentServicesWithFallback(baseParams),
         mainCategory === 'trene-sammen'
           ? fetchGroupSessions({ lat, lon, city: resolvedCity, radiusKm, tags: tagsArray.length > 0 ? tagsArray : undefined })
           : Promise.resolve([]),
@@ -175,7 +175,7 @@ export default async function ResultsPage({
       fallbackNotice = searchResult.fallbackNotice;
       groupSessions = sessions;
     } catch (err) {
-      console.error('[ResultsPage] searchServices failed:', err);
+      console.error('[ResultsPage] content search failed:', err);
       const fetchErrorMsg = err instanceof Error
         ? err.message
         : err && typeof err === 'object' && 'message' in err
@@ -184,7 +184,7 @@ export default async function ResultsPage({
 
       void logError({
         source: 'route',
-        context: 'search_services_rpc',
+        context: 'search_content_services_rpc',
         message: fetchErrorMsg,
         stack: err instanceof Error ? err.stack : undefined,
         metadata: { city: resolvedCity, lat, lon, mainCategory, serviceType: serviceType !== 'any' ? serviceType : undefined, query: rawQuery || undefined },
