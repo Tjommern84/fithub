@@ -21,19 +21,22 @@ Nøkkelverdier skal aldri skrives til logg eller migreringsfiler.
 2. Kjør `sql/44_content_category_search.sql` for å aktivere geografisk søk
    direkte i den nye modellen. Applikasjonen faller automatisk tilbake til
    eksisterende `search_services` frem til funksjonen finnes.
-3. Kjør skrivebeskyttet audit:
+3. Kjør `sql/45_content_results_search.sql` for å aktivere den nye modellen
+   i `/resultater`, inkludert fritekst, kategori, tags, type, sted, radius,
+   sortering og paginering. Også her beholdes automatisk legacy-fallback.
+4. Kjør skrivebeskyttet audit:
 
    ```bash
    npm run content:audit
    ```
 
-4. Bygg en deterministisk plan:
+5. Bygg en deterministisk plan:
 
    ```bash
    npm run content:plan
    ```
 
-5. Kontroller planen uten å skrive:
+6. Kontroller planen uten å skrive:
 
    ```bash
    npm run content:apply:dry
@@ -42,7 +45,7 @@ Nøkkelverdier skal aldri skrives til logg eller migreringsfiler.
    Tørrkjøringen sammenligner hver planrad med dagens `services`-rad. Den
    stopper dersom en rad er slettet eller endret etter at planen ble laget.
 
-6. Migrer med en eksplisitt sikkerhetsgrense:
+7. Migrer med en eksplisitt sikkerhetsgrense:
 
    ```bash
    npm run content:apply -- --max-records=40000
@@ -54,7 +57,7 @@ Nøkkelverdier skal aldri skrives til logg eller migreringsfiler.
    npm run content:apply -- --offset=0 --limit=250 --max-records=250
    ```
 
-7. Verifiser:
+8. Verifiser:
 
    ```bash
    npm run content:verify
@@ -86,4 +89,5 @@ Plan og rapporter lagres under `data/` og er ignorert av Git.
   allerede finnes.
 - `content:verify` skal avslutte med kode 0. Den kontrollerer at alle gamle
   tjenester enten er migrert eller ligger i ventende vurdering, at alle
-  forsidekategorier har innhold, og at eksisterende søk finner dem.
+  forsidekategorier har innhold, og at både kategori- og resultatsøket finner
+  dem gjennom den strukturerte modellen uten duplikater.
