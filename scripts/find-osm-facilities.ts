@@ -27,7 +27,7 @@ const OVERPASS_URLS = [
   'https://overpass.kumi.systems/api/interpreter',
   'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
 ];
-const NORWAY_BBOX  = '57.7,4.2,71.5,31.5';
+const NORWAY_AREA = 'area["ISO3166-1"="NO"][admin_level=2]->.norway;';
 
 const outDir  = join(process.cwd(), 'data');
 const outFile = join(outDir, 'osm-facilities.jsonl');
@@ -148,9 +148,9 @@ const TAG_MAPPINGS: OsmMapping[] = [
 // ── Overpass-spørring ─────────────────────────────────────────────────────
 function buildQuery(mapping: OsmMapping): string {
   const lines = ['node', 'way', 'relation'].map(
-    t => `  ${t}["${mapping.osmKey}"="${mapping.osmValue}"](${NORWAY_BBOX});`
+    t => `  ${t}["${mapping.osmKey}"="${mapping.osmValue}"](area.norway);`
   );
-  return `[out:json][timeout:90];\n(\n${lines.join('\n')}\n);\nout body center qt;`;
+  return `[out:json][timeout:90];\n${NORWAY_AREA}\n(\n${lines.join('\n')}\n);\nout body center qt;`;
 }
 
 async function fetchOverpass(query: string): Promise<Record<string, unknown>[]> {
@@ -256,7 +256,7 @@ async function main() {
 
   if (tagFilter) console.log(`   Filter: tag=${tagFilter} (${activeMappings.length} mapping(er))`);
   console.log(`   Spørringer: ${activeMappings.length * 3} (node/way/relation × ${activeMappings.length} tags)`);
-  console.log(`   Område: Norge (bbox ${NORWAY_BBOX})`);
+  console.log('   Område: Norge (administrativ landegrense, ISO3166-1=NO)');
   console.log();
 
   console.log('⏳ Sender Overpass-spørringer (én per tag)…\n');
