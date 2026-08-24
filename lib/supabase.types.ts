@@ -498,6 +498,35 @@ export type Database = {
           }
         ]
       }
+      content_sync_state: {
+        Row: {
+          attempt_count: number
+          last_error: string | null
+          last_synced_at: string | null
+          service_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          last_error?: string | null
+          last_synced_at?: string | null
+          service_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          last_error?: string | null
+          last_synced_at?: string | null
+          service_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+
+        ]
+      }
       deletion_requests: {
         Row: {
           completed_at: string | null
@@ -1001,16 +1030,19 @@ export type Database = {
           category_key: string
           is_primary: boolean
           offering_id: string
+          sync_managed: boolean
         }
         Insert: {
           category_key: string
           is_primary?: boolean
           offering_id: string
+          sync_managed?: boolean
         }
         Update: {
           category_key?: string
           is_primary?: boolean
           offering_id?: string
+          sync_managed?: boolean
         }
         Relationships: [
           {
@@ -1031,16 +1063,19 @@ export type Database = {
         Row: {
           is_primary: boolean
           offering_id: string
+          sync_managed: boolean
           venue_id: string
         }
         Insert: {
           is_primary?: boolean
           offering_id: string
+          sync_managed?: boolean
           venue_id: string
         }
         Update: {
           is_primary?: boolean
           offering_id?: string
+          sync_managed?: boolean
           venue_id?: string
         }
         Relationships: [
@@ -2082,6 +2117,12 @@ export type Database = {
         p_max_depth?: number | null
         p_user_lat: number | null
         p_user_lon: number | null
+        }
+        Returns: unknown
+      }
+      get_content_sync_health: {
+        Args: {
+        [_ in never]: never
         }
         Returns: unknown
       }
