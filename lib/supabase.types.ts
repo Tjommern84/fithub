@@ -2182,27 +2182,6 @@ export type Database = {
         }
         Returns: unknown
       }
-      search_services: {
-        Args: {
-        p_borough?: string | null
-        p_budget: string | null
-        p_city: string | null
-        p_goal: string | null
-        p_lat: number | null
-        p_limit: number | null
-        p_lon: number | null
-        p_main_category?: string | null
-        p_offset?: number | null
-        p_query: string | null
-        p_radius_km?: number | null
-        p_service_type: string | null
-        p_sort: string | null
-        p_tag?: string | null
-        p_tags?: Array<string> | null
-        p_venue: string | null
-        }
-        Returns: unknown
-      }
       search_content_category_services: {
         Args: {
         p_lat: number | null
@@ -2226,6 +2205,27 @@ export type Database = {
         p_service_type: string | null
         p_sort: string | null
         p_tags: Array<string> | null
+        p_venue: string | null
+        }
+        Returns: unknown
+      }
+      search_services: {
+        Args: {
+        p_borough?: string | null
+        p_budget: string | null
+        p_city: string | null
+        p_goal: string | null
+        p_lat: number | null
+        p_limit: number | null
+        p_lon: number | null
+        p_main_category?: string | null
+        p_offset?: number | null
+        p_query: string | null
+        p_radius_km?: number | null
+        p_service_type: string | null
+        p_sort: string | null
+        p_tag?: string | null
+        p_tags?: Array<string> | null
         p_venue: string | null
         }
         Returns: unknown
