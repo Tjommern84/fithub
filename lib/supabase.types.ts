@@ -2162,6 +2162,17 @@ export type Database = {
         }
         Returns: unknown
       }
+      search_content_category_services: {
+        Args: {
+        p_lat: number | null
+        p_limit?: number | null
+        p_lon: number | null
+        p_main_category: string | null
+        p_offset?: number | null
+        p_radius_km?: number | null
+        }
+        Returns: unknown
+      }
       search_services_unanchored: {
         Args: {
         p_lat?: number | null
