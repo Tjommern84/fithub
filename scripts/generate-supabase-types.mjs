@@ -64,12 +64,15 @@ const definitions = { ...supplementalDefinitions, ...(openApi.definitions ?? {})
 const viewNames = new Set(['geography_columns', 'geometry_columns']);
 const functionNames = [
   'find_trail_route',
+  'get_content_sync_health',
   'get_destinations_in_bbox',
   'get_nearest_destinations',
   'get_nearest_trails',
   'get_settlements_in_bbox',
   'get_trails_in_bbox',
   'is_org_admin',
+  'search_content_category_services',
+  'search_content_services',
   'search_services',
   'search_services_unanchored',
 ];

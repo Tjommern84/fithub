@@ -498,6 +498,35 @@ export type Database = {
           }
         ]
       }
+      content_sync_state: {
+        Row: {
+          attempt_count: number
+          last_error: string | null
+          last_synced_at: string | null
+          service_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempt_count?: number
+          last_error?: string | null
+          last_synced_at?: string | null
+          service_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          attempt_count?: number
+          last_error?: string | null
+          last_synced_at?: string | null
+          service_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+
+        ]
+      }
       deletion_requests: {
         Row: {
           completed_at: string | null
@@ -1001,16 +1030,19 @@ export type Database = {
           category_key: string
           is_primary: boolean
           offering_id: string
+          sync_managed: boolean
         }
         Insert: {
           category_key: string
           is_primary?: boolean
           offering_id: string
+          sync_managed?: boolean
         }
         Update: {
           category_key?: string
           is_primary?: boolean
           offering_id?: string
+          sync_managed?: boolean
         }
         Relationships: [
           {
@@ -1031,16 +1063,19 @@ export type Database = {
         Row: {
           is_primary: boolean
           offering_id: string
+          sync_managed: boolean
           venue_id: string
         }
         Insert: {
           is_primary?: boolean
           offering_id: string
+          sync_managed?: boolean
           venue_id: string
         }
         Update: {
           is_primary?: boolean
           offering_id?: string
+          sync_managed?: boolean
           venue_id?: string
         }
         Relationships: [
@@ -2085,6 +2120,12 @@ export type Database = {
         }
         Returns: unknown
       }
+      get_content_sync_health: {
+        Args: {
+        [_ in never]: never
+        }
+        Returns: unknown
+      }
       get_destinations_in_bbox: {
         Args: {
         p_limit?: number | null
@@ -2141,27 +2182,6 @@ export type Database = {
         }
         Returns: unknown
       }
-      search_services: {
-        Args: {
-        p_borough?: string | null
-        p_budget: string | null
-        p_city: string | null
-        p_goal: string | null
-        p_lat: number | null
-        p_limit: number | null
-        p_lon: number | null
-        p_main_category?: string | null
-        p_offset?: number | null
-        p_query: string | null
-        p_radius_km?: number | null
-        p_service_type: string | null
-        p_sort: string | null
-        p_tag?: string | null
-        p_tags?: Array<string> | null
-        p_venue: string | null
-        }
-        Returns: unknown
-      }
       search_content_category_services: {
         Args: {
         p_lat: number | null
@@ -2185,6 +2205,27 @@ export type Database = {
         p_service_type: string | null
         p_sort: string | null
         p_tags: Array<string> | null
+        p_venue: string | null
+        }
+        Returns: unknown
+      }
+      search_services: {
+        Args: {
+        p_borough?: string | null
+        p_budget: string | null
+        p_city: string | null
+        p_goal: string | null
+        p_lat: number | null
+        p_limit: number | null
+        p_lon: number | null
+        p_main_category?: string | null
+        p_offset?: number | null
+        p_query: string | null
+        p_radius_km?: number | null
+        p_service_type: string | null
+        p_sort: string | null
+        p_tag?: string | null
+        p_tags?: Array<string> | null
         p_venue: string | null
         }
         Returns: unknown

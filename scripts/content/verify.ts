@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   const tables = [
     'services', 'providers', 'venues', 'offerings', 'offering_categories',
     'offering_venues', 'content_sources', 'legacy_service_map', 'content_review_queue',
-    'content_category_listings',
+    'content_sync_state', 'content_category_listings',
   ];
   const counts = Object.fromEntries(await Promise.all(
     tables.map(async (table) => [table, await exactCount(client, table)]),
@@ -31,6 +31,30 @@ async function main(): Promise<void> {
     .select('*', { count: 'exact', head: true })
     .eq('status', 'completed');
   if (completedRunsError) throw new Error(completedRunsError.message);
+
+  const { data: syncHealthData, error: syncHealthError } = await client.rpc(
+    'get_content_sync_health',
+  );
+  if (syncHealthError) throw new Error(`get_content_sync_health: ${syncHealthError.message}`);
+  const syncHealthRow = Array.isArray(syncHealthData) ? syncHealthData[0] : syncHealthData;
+  if (!syncHealthRow || typeof syncHealthRow !== 'object') {
+    throw new Error('get_content_sync_health returnerte ingen statusrad');
+  }
+  const syncHealthValue = (key: string): number => {
+    const value = (syncHealthRow as Record<string, unknown>)[key];
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(parsed)) throw new Error(`Ugyldig synkstatus for ${key}`);
+    return parsed;
+  };
+  const syncHealth = {
+    currentServices: syncHealthValue('current_services'),
+    trackedServices: syncHealthValue('tracked_services'),
+    syncedServices: syncHealthValue('synced_services'),
+    reviewServices: syncHealthValue('review_services'),
+    failedServices: syncHealthValue('failed_services'),
+    deletedStates: syncHealthValue('deleted_states'),
+    enabledTriggers: syncHealthValue('enabled_triggers'),
+  };
 
   const { count: invalidCategories, error: invalidError } = await client
     .from('services')
@@ -177,13 +201,18 @@ async function main(): Promise<void> {
     migration: {
       completedRuns: completedRuns ?? 0,
       pendingReviews: pendingReviews ?? 0,
-      coveredServices: counts.legacy_service_map + (pendingReviews ?? 0),
+      coveredServices: syncHealth.trackedServices,
+      automaticSync: syncHealth,
     },
     checks: {
       completedMigrationExists: (completedRuns ?? 0) > 0,
       mappedRowsDoNotExceedServices: counts.legacy_service_map <= counts.services,
-      allServicesAccountedFor:
-        counts.legacy_service_map + (pendingReviews ?? 0) === counts.services,
+      allServicesAccountedFor: syncHealth.trackedServices === counts.services,
+      automaticSyncTracksAllCurrentServices:
+        syncHealth.currentServices === counts.services
+        && syncHealth.syncedServices + syncHealth.reviewServices === counts.services,
+      automaticSyncHasNoFailedCurrentServices: syncHealth.failedServices === 0,
+      automaticSyncTriggersEnabled: syncHealth.enabledTriggers === 5,
       mappedServicesHaveOfferings: counts.offerings === counts.legacy_service_map,
       offeringsHaveCategories: counts.offering_categories >= counts.offerings,
       publicListingIsPopulated: counts.content_category_listings > 0,
