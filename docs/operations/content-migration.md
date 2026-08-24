@@ -18,19 +18,22 @@ Nøkkelverdier skal aldri skrives til logg eller migreringsfiler.
 1. Kjør `sql/42_content_model.sql` i Supabase SQL Editor. For eksisterende
    installasjoner som allerede har kjørt versjon 42, kjør også
    `sql/43_content_model_hardening.sql`.
-2. Kjør skrivebeskyttet audit:
+2. Kjør `sql/44_content_category_search.sql` for å aktivere geografisk søk
+   direkte i den nye modellen. Applikasjonen faller automatisk tilbake til
+   eksisterende `search_services` frem til funksjonen finnes.
+3. Kjør skrivebeskyttet audit:
 
    ```bash
    npm run content:audit
    ```
 
-3. Bygg en deterministisk plan:
+4. Bygg en deterministisk plan:
 
    ```bash
    npm run content:plan
    ```
 
-4. Kontroller planen uten å skrive:
+5. Kontroller planen uten å skrive:
 
    ```bash
    npm run content:apply:dry
@@ -39,7 +42,7 @@ Nøkkelverdier skal aldri skrives til logg eller migreringsfiler.
    Tørrkjøringen sammenligner hver planrad med dagens `services`-rad. Den
    stopper dersom en rad er slettet eller endret etter at planen ble laget.
 
-5. Migrer med en eksplisitt sikkerhetsgrense:
+6. Migrer med en eksplisitt sikkerhetsgrense:
 
    ```bash
    npm run content:apply -- --max-records=40000
@@ -51,7 +54,7 @@ Nøkkelverdier skal aldri skrives til logg eller migreringsfiler.
    npm run content:apply -- --offset=0 --limit=250 --max-records=250
    ```
 
-6. Verifiser:
+7. Verifiser:
 
    ```bash
    npm run content:verify

@@ -3,7 +3,7 @@ import type { Service } from './domain';
 import type { RankedService } from './matching';
 import { findSettlementInQuery } from './settlementsDb';
 
-type SearchServicesRow = {
+export type SearchServicesRow = {
   service_id: string;
   name: string;
   type: Service['type'];
@@ -32,7 +32,7 @@ type SearchServicesRow = {
   provider_type: Service['provider_type'] | null;
 };
 
-const mapRowToRankedService = (row: SearchServicesRow): RankedService => ({
+export const mapRowToRankedService = (row: SearchServicesRow): RankedService => ({
   service: {
     id: row.service_id,
     name: row.name,
@@ -137,6 +137,41 @@ export async function searchServices(params: SearchParams): Promise<RankedServic
 
   if (error) throw error;
 
+  return (Array.isArray(data) ? data : []).map((row) =>
+    mapRowToRankedService(row as SearchServicesRow)
+  );
+}
+
+export type ContentCategorySearchParams = {
+  mainCategory: string;
+  lat: number;
+  lon: number;
+  radiusKm?: number;
+  limit?: number;
+  page?: number;
+};
+
+/**
+ * Reads category pages from the structured provider/venue/offering model.
+ * Callers should retain the legacy search as a fallback until SQL 44 has
+ * been deployed in every environment.
+ */
+export async function searchContentCategoryServices(
+  params: ContentCategorySearchParams,
+): Promise<RankedService[]> {
+  if (!supabase) return [];
+  const pageSize = Math.min(Math.max(params.limit ?? 20, 1), 100);
+  const offset = (Math.max(params.page ?? 1, 1) - 1) * pageSize;
+  const { data, error } = await supabase.rpc('search_content_category_services', {
+    p_main_category: params.mainCategory,
+    p_lat: params.lat,
+    p_lon: params.lon,
+    p_radius_km: params.radiusKm ?? 50,
+    p_limit: pageSize,
+    p_offset: offset,
+  });
+
+  if (error) throw error;
   return (Array.isArray(data) ? data : []).map((row) =>
     mapRowToRankedService(row as SearchServicesRow)
   );

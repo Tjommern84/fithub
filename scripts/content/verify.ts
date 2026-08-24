@@ -80,11 +80,27 @@ async function main(): Promise<void> {
     return [key, Array.isArray(data) && data.length > 0];
   })));
 
+  const structuredCategorySearch = Object.fromEntries(await Promise.all(categoryKeys.map(async (key) => {
+    const { data, error } = await client.rpc('search_content_category_services', {
+      p_main_category: key,
+      // Uten geografisk anker kontrollerer vi at hver kategori kan leses fra
+      // den nye modellen, uavhengig av hvor tilbyderne holder til.
+      p_lat: null,
+      p_lon: null,
+      p_radius_km: 50,
+      p_limit: 1,
+      p_offset: 0,
+    });
+    if (error) throw new Error(`search_content_category_services/${key}: ${error.message}`);
+    return [key, Array.isArray(data) && data.length > 0];
+  })));
+
   const report = {
     verifiedAt: new Date().toISOString(),
     counts,
     categories: byCategory,
     homepageSearch,
+    structuredCategorySearch,
     legacyCorrections: {
       invalidTreneSamen: invalidCategories ?? 0,
       paraidrettPrimary: paraServices ?? 0,
@@ -105,6 +121,8 @@ async function main(): Promise<void> {
       typoRemoved: (invalidCategories ?? 0) === 0,
       allHomepageCategoriesPopulated: categoryKeys.every((key) => (byCategory[key] ?? 0) > 0),
       allHomepageCategoriesSearchable: categoryKeys.every((key) => homepageSearch[key] === true),
+      allStructuredCategoriesSearchable:
+        categoryKeys.every((key) => structuredCategorySearch[key] === true),
     },
   };
   console.log(JSON.stringify(report, null, 2));

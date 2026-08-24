@@ -4,7 +4,7 @@ import Image from 'next/image';
 import type { Metadata } from 'next';
 import { CATEGORIES, getCategoryConfig, parseMainCategory } from '../../../lib/categoryConfig';
 import { cityCoordinates, cityDisplayNames } from '../../../lib/matching';
-import { searchServices } from '../../../lib/matchingDb';
+import { searchContentCategoryServices, searchServices } from '../../../lib/matchingDb';
 import type { RankedService } from '../../../lib/matching';
 import { serviceTypeLabels } from '../../../lib/resultFilters';
 import LocalHighlights from '../../../components/LocalHighlights';
@@ -190,16 +190,38 @@ export default async function CategoryCityPage({
 
   let results: RankedService[] = [];
   try {
-    results = await searchServices({
+    results = await searchContentCategoryServices({
       mainCategory,
-      city: params.city,
       lat: coords.lat,
       lon: coords.lon,
-      sort: 'nearest',
+      radiusKm: 50,
       limit: 20,
     });
+    if (results.length === 0) {
+      results = await searchServices({
+        mainCategory,
+        city: params.city,
+        lat: coords.lat,
+        lon: coords.lon,
+        sort: 'nearest',
+        limit: 20,
+      });
+    }
   } catch {
-    // render page with empty results rather than crashing
+    // SQL 44 is rolled out independently. Keep category pages available in
+    // environments where the new RPC has not been installed yet.
+    try {
+      results = await searchServices({
+        mainCategory,
+        city: params.city,
+        lat: coords.lat,
+        lon: coords.lon,
+        sort: 'nearest',
+        limit: 20,
+      });
+    } catch {
+      // Render the page with empty results rather than crashing.
+    }
   }
 
   const resultsUrl = `/resultater?cat=${params.category}&location=${encodeURIComponent(displayCity)}&lat=${coords.lat}&lon=${coords.lon}`;
