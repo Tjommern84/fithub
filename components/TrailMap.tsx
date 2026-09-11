@@ -409,6 +409,10 @@ function SettingsIcon() {
 export default function TrailMap({ initialDestId }: { initialDestId?: string }) {
   const [center, setCenter] = useState<[number, number]>(DRAMMEN);
   const [trails, setTrails] = useState<Trail[]>([]);
+  const [trailsLoading, setTrailsLoading] = useState(false);
+  const [trailsError, setTrailsError] = useState(false);
+  const trailsAbortRef = useRef<AbortController | null>(null);
+  const trailsQueryRef = useRef<string | null>(null);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [destinations, setDestinations] = useState<Destination[]>([]);
   const [transitStops, setTransitStops] = useState<TransitStop[]>([]);
@@ -609,6 +613,30 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
     );
   }, [calculateFootRoute]);
 
+  const fetchTrails = useCallback((query: string) => {
+    trailsAbortRef.current?.abort();
+    const controller = new AbortController();
+    trailsAbortRef.current = controller;
+    trailsQueryRef.current = query;
+    setTrailsLoading(true);
+    setTrailsError(false);
+    fetch(`/api/trails?${query}`, { signal: controller.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('Trail request failed');
+        const data: unknown = await res.json();
+        if (!Array.isArray(data)) throw new Error('Invalid trail response');
+        if (!controller.signal.aborted) setTrails(data as Trail[]);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setTrailsError(true);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTrailsLoading(false);
+      });
+  }, []);
+
+  useEffect(() => () => trailsAbortRef.current?.abort(), []);
+
   const handleBoundsChange = useCallback((bounds: L.LatLngBounds) => {
     const seq = ++fetchSeq.current;
     const params = new URLSearchParams({
@@ -617,12 +645,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
       maxLon: String(bounds.getEast()),
       maxLat: String(bounds.getNorth()),
     });
-    fetch(`/api/trails?${params.toString()}`)
-      .then((res) => res.ok ? res.json() : null)
-      .then((data: Trail[] | null) => {
-        if (data !== null && seq === fetchSeq.current) setTrails(data);
-      })
-      .catch(() => {});
+    fetchTrails(params.toString());
 
     fetch(`/api/settlements?${params.toString()}`)
       .then((res) => res.ok ? res.json() : null)
@@ -659,7 +682,7 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
         if (data !== null && seq === fetchSeq.current) setTransitStops(data);
       })
       .catch(() => {});
-  }, [calculateFootRoute, initialDestId]);
+  }, [calculateFootRoute, initialDestId, fetchTrails]);
 
   const selectedDestination = useMemo<RouteDestination | null>(() => {
     if (!selectedDestId) return null;
@@ -692,6 +715,12 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
   }, []);
 
   const totalCount = unifiedList.length;
+  const showTrailStatus = Object.values(visibleTypes).some(Boolean);
+  const trailEmptyMessage = showTrailStatus && trailsLoading
+    ? 'Laster turruter …'
+    : showTrailStatus && trailsError
+      ? 'Turrutene kunne ikke lastes. Prøv igjen.'
+      : null;
 
   return (
     <div className="w-full">
@@ -788,6 +817,25 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
       </div>
 
       {/* ── Kart + Resultatpanel ─────────────────────────────────────────── */}
+      {showTrailStatus && (trailsLoading || trailsError) && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm text-slate-700">
+          <p role={trailsError ? 'alert' : 'status'}>
+            {trailsLoading ? 'Laster turruter …' : 'Kunne ikke oppdatere turrutene i dette området.'}
+            {trails.length > 0 && ' Tidligere innlastede ruter vises fortsatt.'}
+          </p>
+          {trailsError && (
+            <button
+              type="button"
+              className="rounded-lg border border-slate-300 px-3 py-2 font-semibold hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              onClick={() => {
+                if (trailsQueryRef.current) fetchTrails(trailsQueryRef.current);
+              }}
+            >
+              Prøv igjen
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-4 lg:flex-row">
 
         {/* Kart */}
@@ -798,9 +846,8 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
         >
           <MapContainer center={center} zoom={12} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-              subdomains="abcd"
+              attribution='&copy; <a href="https://www.kartverket.no/">Kartverket</a>'
+              url="https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png"
               maxZoom={19}
             />
 
@@ -1075,11 +1122,11 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
             <div className="hidden lg:block">
             {unifiedList.length === 0 ? (
               <p className="p-4 text-sm text-slate-500">
-                {activeChip === 'tettsteder'
+                {trailEmptyMessage ?? (activeChip === 'tettsteder'
                   ? 'Tettsteder vises som lilla prikker på kartet.'
                   : activeChip === 'kollektiv'
                   ? 'Kollektivstasjoner vises på kartet.'
-                  : 'Ingen resultater i dette området.'}
+                  : 'Ingen resultater i dette området.')}
               </p>
             ) : (
               <div className="divide-y divide-slate-100">
@@ -1163,11 +1210,11 @@ export default function TrailMap({ initialDestId }: { initialDestId?: string }) 
         <div className="flex gap-3 px-4 pb-2" style={{ width: 'max-content' }}>
           {unifiedList.length === 0 ? (
             <p className="py-2 text-sm text-slate-500">
-              {activeChip === 'tettsteder'
+              {trailEmptyMessage ?? (activeChip === 'tettsteder'
                 ? 'Tettsteder vises på kartet.'
                 : activeChip === 'kollektiv'
                 ? 'Kollektivstasjoner vises på kartet.'
-                : 'Ingen resultater i dette området.'}
+                : 'Ingen resultater i dette området.')}
             </p>
           ) : (
             unifiedList.slice(0, 12).map((entry) => {
