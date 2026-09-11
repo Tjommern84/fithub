@@ -7,6 +7,12 @@
 
 ## Siste oppdateringer
 
+### PM (2026-09-11 — separat Turso-leveranse)
+
+Gren `feature/turso-trails`, arbeidstre `.worktrees/turso-release`, avgrenset fra Basis-/aktivitetsarbeidet. Ny dataversjon `fithub-trails-release-20260911` er lastet opp og kontrollert. Geonorge-oppdatering beholder eksisterende ID-er og andre kilder. Se [gjeldende leveranse- og bytteplan](docs/operations/turso-cutover.md). Ingen commit/push/deploy eller sletting fra Supabase.
+
+Neste steg: gjennomgå faktiske Supabase-avhengigheter via `scripts/inspect-trail-dependencies.sql`, lever isolert gren og test preview før produksjonsbytte. SQL 47 er ikke nødvendig for Turso-grenen.
+
 ### Backend + Frontend (2026-07-02 — HTTP 500-eliminering, sql/38)
 
 Basert på PM-analyse av 983 Supabase-logglinjer (16 HTTP 500 på search_services, 1 HTTP 555

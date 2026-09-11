@@ -4,6 +4,8 @@ Norwegian marketplace matching users with gyms, PTs, sports clubs and classes â€
 
 **Live:** [fithub.no](https://fithub.no)
 
+Turso trail migration: [isolated release, data refresh and cutover](docs/operations/turso-cutover.md). This branch preserves the existing homepage and defaults to Supabase until explicitly configured for Turso.
+
 ---
 
 ## Stack

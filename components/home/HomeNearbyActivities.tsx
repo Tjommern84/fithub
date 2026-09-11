@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useLocation } from '../../lib/locationContext';
 import { searchServices } from '../../lib/matchingDb';
 import type { RankedService } from '../../lib/matching';
-import { getNearestTrails, type NearestTrail } from '../../lib/trailsDb';
+import type { NearestTrail } from '../../lib/trailsDb';
 import { getServiceIllustration } from '../../lib/serviceIllustrations';
 
 const TRAIL_TYPE_LABELS: Record<NearestTrail['trailType'], string> = {
@@ -15,6 +15,13 @@ const TRAIL_TYPE_LABELS: Record<NearestTrail['trailType'], string> = {
   sykkelrute: 'Sykkelrute',
   annet: 'Annet',
 };
+
+async function getNearestTrails(lat: number, lon: number, radiusKm: number, limit: number): Promise<NearestTrail[]> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon), radiusKm: String(radiusKm), limit: String(limit) });
+  const response = await fetch(`/api/trails/nearest?${params}`);
+  if (!response.ok) throw new Error('Kunne ikke hente turruter');
+  return response.json();
+}
 
 // get_nearest_trails() returnerer rå, ufragmenterte Geonorge-segmenter — samme rute kan derfor
 // dukke opp som flere kort (bekreftet: "Gulskgen – Konnerudkollen" ×3). Gruppér på (name,
@@ -84,8 +91,6 @@ export default function HomeNearbyActivities() {
     let serviceError = false;
 
     // searchServices() kaster ved RPC-feil — fanget her, ikke latt boble til en error boundary.
-    // getNearestTrails() feiler gracefully til [] internt (RPC ikke kjørt mot DB ennå) —
-    // ingen try/catch nødvendig for den her.
     Promise.all([
       searchServices({ lat: location.lat, lon: location.lon, sort: 'nearest', radiusKm: 30, limit: 50 })
         .then((results) => results.filter((item) => item.service.provider_type === 'facility'))
@@ -93,7 +98,10 @@ export default function HomeNearbyActivities() {
           serviceError = true;
           return [] as RankedService[];
         }),
-      getNearestTrails(location.lat, location.lon, 30, 10),
+      getNearestTrails(location.lat, location.lon, 30, 10).catch(() => {
+        serviceError = true;
+        return [] as NearestTrail[];
+      }),
     ]).then(([facilities, trails]) => {
       if (cancelled) return;
       const facilityCards: NearbyCard[] = facilities.map((item) => ({

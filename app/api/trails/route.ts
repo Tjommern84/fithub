@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getTrailsInBounds } from '../../../lib/trailsDb';
+import { searchTrailBounds } from '../../../lib/trailsServer';
+import { validTrailBounds } from '../../../lib/tursoTrails';
 import { getClientIp, isRateLimited } from '../../../lib/rateLimit';
 
 export async function GET(request: Request) {
@@ -15,10 +16,15 @@ export async function GET(request: Request) {
   const maxLon = Number(url.searchParams.get('maxLon'));
   const maxLat = Number(url.searchParams.get('maxLat'));
 
-  if (![minLon, minLat, maxLon, maxLat].every(Number.isFinite)) {
+  if (!['minLon','minLat','maxLon','maxLat'].every(key => url.searchParams.get(key)?.trim())
+    || !validTrailBounds({ minLon, minLat, maxLon, maxLat })) {
     return NextResponse.json({ error: 'Mangler eller ugyldig bbox' }, { status: 400 });
   }
 
-  const trails = await getTrailsInBounds({ minLon, minLat, maxLon, maxLat });
-  return NextResponse.json(trails);
+  try {
+    const trails = await searchTrailBounds({ minLon, minLat, maxLon, maxLat }, 2000, request.signal);
+    return NextResponse.json(trails);
+  } catch {
+    return NextResponse.json({ error: 'Kunne ikke hente turruter. Prøv igjen eller zoom inn.' }, { status: 503 });
+  }
 }
