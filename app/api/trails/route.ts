@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { searchTrailBounds } from '../../../lib/trailsServer';
+import { searchTrailBounds, getTrailDataSource } from '../../../lib/trailsServer';
 import { validTrailBounds } from '../../../lib/tursoTrails';
 import { getClientIp, isRateLimited } from '../../../lib/rateLimit';
 
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
   try {
     const trails = await searchTrailBounds({ minLon, minLat, maxLon, maxLat }, 2000, request.signal);
-    return NextResponse.json(trails);
+    return NextResponse.json(trails, { headers: { 'X-FitHub-Trails-Source': getTrailDataSource(), 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'Kunne ikke hente turruter. Prøv igjen eller zoom inn.' }, { status: 503 });
   }

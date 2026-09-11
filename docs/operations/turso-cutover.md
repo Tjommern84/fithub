@@ -4,7 +4,9 @@ Dato: 2026-09-11. Gren: `feature/turso-trails`. Arbeidstre: `C:/Kode/SettDegEtMa
 
 ## Leveranse
 
-Dette arbeidstreet bygger på eksisterende `main` og inneholder kun Turso-kartflyten, oppdateringsverktøy, tester og kompatible sikkerhetsoppdateringer. Aktivitetsforsiden, Basis-arrangementene og SQL 47 er ikke med. Ingen commit, push, produksjonsdeploy eller sletting er utført.
+Dette arbeidstreet bygger på eksisterende `main` og inneholder kun Turso-kartflyten, oppdateringsverktøy, tester og kompatible sikkerhetsoppdateringer. Aktivitetsforsiden, Basis-arrangementene og SQL 47 er ikke med. Leveransen er committet og pushet i [PR 11](https://github.com/Tjommern84/fithub/pull/11). Ingen produksjonsdeploy eller sletting er utført av denne leveransen.
+
+GitHub CI og Vercel-preview for første commit `bd29614` bestod. Direkte previewkontroll krever Vercel-innlogging; lokal Vercel-tilgang er foreløpig ikke konfigurert. Produksjonskontroll 2026-09-11: kjent kartområde returnerte 149 ruter, mens `/api/trails/nearest` svarte 404. Dette viser at den nye API-versjonen ennå ikke var aktiv i produksjon ved kontrollen.
 
 Databasekandidat: `fithub-trails-release-20260911` i Irland. 163 783 rader, 242 802 688 byte. Opplasting er verifisert med radantall for ruter og RTree samt binær geometri for utvalgte rader. Dette er ikke full remote checksum av alle rader.
 
@@ -44,6 +46,8 @@ TURSO_AUTH_TOKEN=<databasebegrenset lesetoken>
 3. Opprett først preview med disse variablene. Kontroller `/tur`, kartflytting, filtre, tomme treff, mobil og en kjent positiv nærmeste-rute. Test også resten av forsiden med reell eksisterende Supabase-konfigurasjon.
 4. Det lokale kandidat-tokenet er gyldig i 30 dager fra 2026-09-11. Før produksjon: velg dokumentert rotasjon/levetid og legg tokenet i deployplattformens hemmelighetshåndtering. `.env.turso.local` er kun lokalt testoppsett; det distribueres ikke automatisk.
 5. Etter godkjent preview kan samme app og dataversjon publiseres. Kontroller faktiske svar på live-domenet og overvåk feil/latens før videre steg.
+
+Begge nye API-er returnerer `X-FitHub-Trails-Source` ved vellykket søk. Kontroller kilde **og faktiske treff** med `node scripts/verify-trails-deployment.mjs https://fithub.no turso`. For rollback brukes samme kommando med `supabase`. Kontrollen avviser innloggingsredirect, gammel deploy, feil datakilde og tomt kjent søk. Den endrer ingen data og omgår ikke previewbeskyttelse.
 
 Rollback: sett `TRAILS_DATA_SOURCE=supabase` og redeploy, eller gå tilbake til tidligere deploy. Kontroller et kjent område med faktiske treff; gammel Supabase-adapter kan returnere tom liste ved feil. Supabase-tabellen må beholdes så lenge denne rollbacken trengs.
 

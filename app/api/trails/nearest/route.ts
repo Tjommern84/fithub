@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { searchNearestTrails } from '../../../../lib/trailsServer';
+import { searchNearestTrails, getTrailDataSource } from '../../../../lib/trailsServer';
 import { getClientIp, isRateLimited } from '../../../../lib/rateLimit';
 
 export async function GET(request: Request) {
@@ -11,6 +11,8 @@ export async function GET(request: Request) {
     || Math.abs(lat) > 90 || Math.abs(lon) > 180 || radius <= 0 || radius > 100 || limit < 1 || limit > 100 || !Number.isInteger(limit)) {
     return NextResponse.json({ error: 'Ugyldig sted, radius eller antall' }, { status: 400 });
   }
-  try { return NextResponse.json(await searchNearestTrails(lat, lon, radius, limit, request.signal)); }
+  try { return NextResponse.json(await searchNearestTrails(lat, lon, radius, limit, request.signal), {
+    headers: { 'X-FitHub-Trails-Source': getTrailDataSource(), 'Cache-Control': 'no-store' },
+  }); }
   catch { return NextResponse.json({ error: 'Kunne ikke hente nærliggende turruter' }, { status: 503 }); }
 }
